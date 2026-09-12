@@ -1,0 +1,150 @@
+import styles from './Toolbar.module.css';
+import { Button } from '../common/ui';
+import {
+  ExportIcon,
+  FolderOpenIcon,
+  PauseIcon,
+  PlayIcon,
+  SaveIcon,
+  SlidersIcon,
+  StopIcon,
+  TerminalMarkIcon,
+  TrashIcon
+} from '../../lib/icons';
+import { DeviceSelectorControl } from '../DeviceSelector/DeviceSelector';
+import { useDeviceStore, useSelectedDevice } from '../../state/deviceStore';
+import { useLogStore } from '../../state/logStore';
+import { useFilterStore } from '../../state/filterStore';
+import { useUiStore } from '../../state/uiStore';
+import type { ProjectFile } from '@shared/types';
+
+export function Toolbar() {
+  const captureState = useDeviceStore((s) => s.captureState);
+  const selectedDevice = useSelectedDevice();
+  const setCaptureState = useDeviceStore((s) => s.setCaptureState);
+  const setError = useDeviceStore((s) => s.setError);
+  const appendBatch = useLogStore((s) => s.appendBatch);
+  const clearLog = useLogStore((s) => s.clear);
+  const filters = useFilterStore((s) => s.filters);
+  const openExportDialog = useUiStore((s) => s.openExportDialog);
+  const openSettingsDialog = useUiStore((s) => s.openSettingsDialog);
+
+  const isCapturing = captureState === 'capturing';
+  const isPaused = captureState === 'paused';
+  const canStart = !!selectedDevice && (captureState === 'idle' || captureState === 'error');
+  const canPause = isCapturing;
+  const canStop = isCapturing || isPaused || captureState === 'reconnecting';
+
+  async function handleStart() {
+    if (!selectedDevice) return;
+    try {
+      await window.api.capture.start(selectedDevice.serial);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start capture');
+    }
+  }
+
+  async function handlePauseResume() {
+    if (isPaused) {
+      await window.api.capture.resume();
+    } else {
+      await window.api.capture.pause();
+    }
+  }
+
+  async function handleStop() {
+    await window.api.capture.stop();
+    setCaptureState('idle');
+  }
+
+  function handleClear() {
+    clearLog();
+  }
+
+  async function handleClearDeviceToo() {
+    if (!selectedDevice) return;
+    const confirmed = window.confirm(
+      `Also clear ${selectedDevice.model}'s logcat buffer? Other tools reading this device's log will lose history too.`
+    );
+    if (!confirmed) return;
+    clearLog();
+    await window.api.capture.clearDeviceBuffer(selectedDevice.serial);
+  }
+
+  async function handleOpen() {
+    const result = await window.api.files.openLogDialog();
+    if (!result) return;
+    clearLog();
+    appendBatch(result.entries);
+  }
+
+  async function handleSaveProject() {
+    const project: ProjectFile = {
+      name: 'LogCat Viewer Project',
+      createdAt: new Date().toISOString(),
+      modifiedAt: new Date().toISOString(),
+      filters
+    };
+    const path = await window.api.files.saveProjectDialog(project.name);
+    if (!path) return;
+    await window.api.files.saveProject(path, project);
+  }
+
+  return (
+    <div className={styles.toolbar}>
+      <div className={styles.brand}>
+        <div className={styles.logoMark}>
+          <TerminalMarkIcon size={15} color="#cfe8ff" />
+        </div>
+        <span className={styles.brandTitle}>LogCat Viewer</span>
+      </div>
+
+      <div className={styles.divider} />
+
+      <DeviceSelectorControl />
+
+      <div className={styles.divider} />
+
+      <Button onClick={handleStart} disabled={!canStart} title="Start capture">
+        <PlayIcon size={15} />
+        Start
+      </Button>
+      <Button onClick={handlePauseResume} disabled={!canPause && !isPaused} variant={isPaused || isCapturing ? 'active' : 'plain'} title="Pause capture">
+        <PauseIcon size={15} />
+        {isPaused ? 'Resume' : 'Pause'}
+      </Button>
+      <Button onClick={handleStop} disabled={!canStop} title="Stop capture">
+        <StopIcon size={15} />
+        Stop
+      </Button>
+
+      <div className={styles.divider} />
+
+      <Button onClick={handleClear} onContextMenu={(e) => { e.preventDefault(); handleClearDeviceToo(); }} title="Clear view (right-click: also clear device buffer)">
+        <TrashIcon size={15} />
+        Clear
+      </Button>
+
+      <div className={styles.divider} />
+
+      <Button onClick={handleOpen} title="Open a saved log file">
+        <FolderOpenIcon size={15} />
+        Open
+      </Button>
+      <Button onClick={handleSaveProject} title="Save current filters as a project">
+        <SaveIcon size={15} />
+        Save
+      </Button>
+      <Button onClick={openExportDialog} title="Export the log buffer">
+        <ExportIcon size={15} />
+        Export
+      </Button>
+
+      <div className={styles.spacer} />
+
+      <Button onClick={openSettingsDialog} title="Settings" style={{ padding: 6 }}>
+        <SlidersIcon size={17} />
+      </Button>
+    </div>
+  );
+}

@@ -1,0 +1,104 @@
+/*
+ * Design tokens. Dark values are ported verbatim from the approved mockups
+ * (UI_Design/*.dc.html). Light values are a deliberate new pass — not a
+ * mechanical inversion — per IMPLEMENTATION_PLAN.md §12: level colors in
+ * particular needed re-checking for contrast against a white background,
+ * since the mockups' pale neon tones (#5ec8f8, #f5b942, ...) read fine on
+ * near-black but wash out on white.
+ *
+ * Rule: no component may hardcode a color — every color used in a .tsx file
+ * must resolve through one of these variables (enforced by the
+ * `no-restricted-syntax` ESLint rule for hex literals in style props).
+ */
+
+:root {
+  --font-ui: 'IBM Plex Sans', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  /* Text/icon color for content sitting on top of an accent-filled surface (a filled
+     button, an active pill, a checked checkbox). White reads correctly against both
+     themes' accent blues, so this one isn't split per-theme like the rest. */
+  --text-on-accent: #ffffff;
+}
+
+/* ---------- Dark (default) ---------- */
+:root,
+:root[data-theme='dark'] {
+  --bg-app: #1a1d23;
+  --bg-panel: #1e2127;
+  --bg-panel-alt: #23262d;
+  --bg-input: #181b20;
+
+  --border: #2a2e35;
+  --border-strong: #3a3f47;
+
+  --text-primary: #e6e8eb;
+  --text-secondary: #9aa0a8;
+  --text-muted: #666c74;
+
+  --accent: #3d8bef;
+  --accent-soft: rgba(61, 139, 239, 0.14);
+  --accent-strong: #2f7dd8;
+  --accent-text: #bcdcff;
+
+  --level-v: #8b9099;
+  --level-d: #5ec8f8;
+  --level-i: #6fcf7d;
+  --level-w: #f5b942;
+  --level-e: #f56c6c;
+  --level-f: #ff4d6d;
+
+  --marker-purple: #a56bd6;
+
+  /* Used only by the smaller, denser Search Results dock — the main log table
+     is deliberately flat with no per-row background (see LogTable.tsx). */
+  --row-stripe: rgba(255, 255, 255, 0.02);
+
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+  --shadow-dialog: 0 20px 60px rgba(0, 0, 0, 0.55);
+
+  --success: #4caf50;
+}
+
+/* ---------- Light (new pass, not an inversion) ---------- */
+:root[data-theme='light'] {
+  /* The log view itself (--bg-app) stays flat white — dense monospace text reads best
+     with maximum, uncolored contrast. Chrome (--bg-panel: toolbar, sidebar, table
+     header, status bar, dialogs) gets a distinct, simple neutral grey instead of
+     sharing that same white — user feedback: an all-white UI made the toolbar blend
+     into the log view instead of reading as a separate control surface, the way a
+     toolbar should stand apart from its content pane. */
+  --bg-app: #ffffff;
+  --bg-panel: #eef0f3;
+  --bg-panel-alt: #e3e6ea;
+  --bg-input: #ffffff;
+
+  --border: #dee1e6;
+  --border-strong: #c3c9d1;
+
+  --text-primary: #1a1d23;
+  --text-secondary: #565c66;
+  --text-muted: #868c96;
+
+  --accent: #2568b8;
+  --accent-soft: rgba(37, 104, 184, 0.1);
+  --accent-strong: #1f5aa0;
+  --accent-text: #1a5296;
+
+  /* Contrast-checked against #ffffff / #f4f5f7, not a straight port of the dark hues. */
+  --level-v: #6b7078;
+  --level-d: #1868b0;
+  --level-i: #22863a;
+  --level-w: #a15c00;
+  --level-e: #c9322d;
+  --level-f: #b0175e;
+
+  --marker-purple: #7c4aa8;
+
+  --row-stripe: rgba(15, 20, 30, 0.025);
+
+  --scrollbar-thumb: rgba(0, 0, 0, 0.14);
+  --shadow-dialog: 0 16px 40px rgba(30, 34, 42, 0.18);
+
+  --success: #2e8b3d;
+}

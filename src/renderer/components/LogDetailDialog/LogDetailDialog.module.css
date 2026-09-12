@@ -1,0 +1,80 @@
+.tabs {
+  display: flex;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.tab {
+  font-size: 12px;
+  padding: 9px 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+.tabActive {
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--accent);
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  row-gap: 10px;
+  font-size: 12.5px;
+}
+.fieldLabel {
+  color: var(--text-muted);
+}
+.fieldValue {
+  color: var(--text-primary);
+  word-break: break-word;
+}
+.divider {
+  height: 1px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+.messageBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.messageText {
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+.rawText {
+  font-size: 12.5px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-secondary);
+  user-select: text;
+}
+.empty {
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.levelBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 20px;
+  border-radius: 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  border: 1px solid var(--border-strong);
+}
+.copyFeedback {
+  color: var(--level-i);
+}

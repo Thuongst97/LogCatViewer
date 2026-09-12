@@ -1,0 +1,138 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.btn:hover:not(.btnDisabled) {
+  background: var(--bg-panel-alt);
+  color: var(--text-primary);
+}
+.btnDisabled {
+  opacity: 0.38;
+  cursor: default;
+}
+.btnActive {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  border: 1px solid rgba(61, 139, 239, 0.35);
+}
+.btnGhost {
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+}
+.btnFill {
+  background: var(--accent-strong);
+  color: var(--text-on-accent);
+  font-weight: 600;
+}
+.btnFill:hover {
+  filter: brightness(1.08);
+  color: var(--text-on-accent);
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  background: transparent;
+}
+.chipActive {
+  background: var(--accent-soft);
+  border-color: rgba(61, 139, 239, 0.4);
+  color: var(--accent-text);
+}
+.chipDim {
+  opacity: 0.35;
+}
+
+.pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  flex: 1;
+  background: transparent;
+  gap: 6px;
+}
+.pillActive {
+  background: var(--accent-strong);
+  color: var(--text-on-accent);
+  border: 1px solid var(--accent-strong);
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid var(--border-strong);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  padding: 0;
+}
+.checkboxOn {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.checkboxDisabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.checkboxDisabled.checkboxOn {
+  background: var(--border-strong);
+  border-color: var(--border-strong);
+}
+
+.labelXs {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.fieldInput {
+  height: 30px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  padding: 0 8px;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  font-family: var(--font-ui);
+}
+.fieldInput:focus-within {
+  border-color: var(--accent);
+}
+.fieldInputEl {
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  width: 100%;
+  height: 100%;
+}

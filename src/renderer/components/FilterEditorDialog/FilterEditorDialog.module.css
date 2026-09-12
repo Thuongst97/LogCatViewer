@@ -1,0 +1,104 @@
+.typeRow {
+  display: flex;
+  gap: 6px;
+}
+.typeOption {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+}
+.typeOptionActive {
+  background: var(--accent-strong);
+  color: var(--text-on-accent);
+  border-color: var(--accent-strong);
+}
+
+.swatchRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding-left: 26px;
+}
+.swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  flex-shrink: 0;
+}
+.swatchSelected {
+  box-shadow: 0 0 0 2px var(--bg-panel), 0 0 0 3.5px var(--accent);
+}
+.swatchCustom {
+  border: 1.5px dashed var(--border-strong);
+  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.swatchCustom:hover {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+/* Positioned exactly over its visible sibling swatch button and made fully
+   transparent (not display:none/visibility:hidden — those can block some
+   browsers from ever opening the native picker on a programmatic .click()). */
+.hiddenColorInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  border: none;
+  padding: 0;
+}
+
+.fieldRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.fieldLabel {
+  font-size: 12px;
+  width: 64px;
+  flex-shrink: 0;
+}
+.fieldLabelEnabled {
+  color: var(--text-primary);
+}
+.fieldLabelDisabled {
+  color: var(--text-muted);
+}
+.fieldGrow {
+  flex-grow: 1;
+}
+.miniChip {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  padding: 1px 4px;
+  background: none;
+}
+.miniChipActive {
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+.levelChipRow {
+  display: flex;
+  gap: 4px;
+  flex-grow: 1;
+}
