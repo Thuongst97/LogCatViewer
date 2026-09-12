@@ -1,6 +1,6 @@
 node_modules/
 out/
-dist/
+deploy/
 *.log
 .DS_Store
 .vite/

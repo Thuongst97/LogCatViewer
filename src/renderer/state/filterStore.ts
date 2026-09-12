@@ -53,7 +53,7 @@ function persist(filters: Filter[]): void {
 export const useFilterStore = create<FilterState>((set) => ({
   filters: STARTER_FILTERS,
   filtersEnabled: true,
-  quickLevelExclusions: new Set<LogLevel>(['V']),
+  quickLevelExclusions: new Set<LogLevel>(),
   searchQuery: '',
   searchRegex: false,
   searchCaseSensitive: false,

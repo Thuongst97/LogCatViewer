@@ -2,7 +2,7 @@ appId: com.logcatviewer.app
 productName: LogCat Viewer
 copyright: Copyright © 2026
 directories:
-  output: dist
+  output: deploy
   buildResources: build
 files:
   - out/**/*
@@ -12,7 +12,6 @@ win:
     - target: nsis
       arch:
         - x64
-  icon: build/icon.ico
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

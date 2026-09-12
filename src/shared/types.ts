@@ -143,7 +143,7 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  theme: 'system',
+  theme: 'light',
   adbPath: null,
   bufferCapacity: 100_000,
   recentDeviceSerials: [],
