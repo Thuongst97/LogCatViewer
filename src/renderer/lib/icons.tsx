@@ -194,7 +194,8 @@ export function TerminalMarkIcon({ size, color = 'currentColor', style }: IconPr
   return (
     <svg {...base(size)} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={style}>
       <path d="M4 5l6 6-6 6" />
-      <path d="M13 17h7" />
+      <path d="M13 9h7" />
+      <path d="M13 15h7" />
     </svg>
   );
 }

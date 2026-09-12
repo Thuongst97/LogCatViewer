@@ -29,6 +29,7 @@ async function createWindow(): Promise<void> {
     minWidth: 1024,
     minHeight: 640,
     show: false,
+    icon: join(__dirname, '../../build/icon.png'),
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#1a1d23' : '#eef0f3',
     // The menu bar is hidden by default (user feedback: it just sat there as
     // a plain OS strip above the toolbar) — pressing Alt reveals it, the
