@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import styles from './SearchResultsDock.module.css';
+import tableStyles from '../LogTable/LogTable.module.css';
 import { ChevronDownIcon, ChevronUpIcon, SearchIcon } from '../../lib/icons';
 import { useLogStore } from '../../state/logStore';
 import { useFilterStore } from '../../state/filterStore';
 import { useUiStore, SEARCH_RESULTS_HEADER_HEIGHT } from '../../state/uiStore';
+import { useTableSettingsStore } from '../../state/tableSettingsStore';
 import { useSearchWorker } from '../../lib/useSearchWorker';
-import { highlightText } from '../../lib/highlight';
-import type { LogEntry } from '@shared/types';
+import { computeTableLayout } from '../../lib/tableLayout';
+import { renderLogCell } from '../../lib/renderLogCell';
+import { COLUMN_LABELS, type LogEntry } from '@shared/types';
 
 const DEBOUNCE_MS = 150;
 
@@ -30,6 +33,9 @@ export function SearchResultsDock() {
   const { search } = useSearchWorker();
   const [results, setResults] = useState<LogEntry[]>([]);
   const [dragging, setDragging] = useState(false);
+  const columns = useTableSettingsStore((s) => s.columns);
+  const columnWidths = useTableSettingsStore((s) => s.columnWidths);
+  const { visibleColumns, gridTemplate } = computeTableLayout({ columns, columnWidths });
 
   useEffect(() => {
     const handle = setTimeout(async () => {
@@ -99,35 +105,38 @@ export function SearchResultsDock() {
       </button>
 
       {visible && (
-        <div className={[styles.body, 'mono'].join(' ')}>
-          {results.length === 0 ? (
-            <div className={styles.empty}>{query.length === 0 ? 'No search in progress.' : 'No matches.'}</div>
-          ) : (
-            results.map((entry, i) => (
-              <div
-                key={entry.id}
-                className={styles.row}
-                style={{ background: i % 2 === 1 ? 'var(--row-stripe)' : undefined }}
-                onClick={() => select(entry.id)}
-                onDoubleClick={() => goToEntry(entry.id)}
-                title="Double-click to jump to this line in the main view"
-              >
-                <div className={styles.cell} style={{ color: 'var(--text-muted)' }}>
-                  {entry.id}
-                </div>
-                <div className={styles.cell} style={{ color: 'var(--text-muted)' }}>
-                  {entry.time}
-                </div>
-                <div className={styles.cell} style={{ color: 'var(--text-secondary)' }}>
-                  {entry.tag}
-                </div>
-                <div className={styles.cell} style={{ color: 'var(--text-primary)' }}>
-                  {highlightText(entry.message, query, regex, caseSensitive)}
-                </div>
+        <>
+          <div className={[tableStyles.headerRow, 'mono'].join(' ')} style={{ gridTemplateColumns: gridTemplate }}>
+            {visibleColumns.map((column) => (
+              <div key={column} className={tableStyles.cell}>
+                {COLUMN_LABELS[column].toUpperCase()}
               </div>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+
+          <div className={[styles.body, 'mono'].join(' ')}>
+            {results.length === 0 ? (
+              <div className={styles.empty}>{query.length === 0 ? 'No search in progress.' : 'No matches.'}</div>
+            ) : (
+              results.map((entry) => (
+                <div
+                  key={entry.id}
+                  className={tableStyles.row}
+                  style={{ gridTemplateColumns: gridTemplate }}
+                  onClick={() => select(entry.id)}
+                  onDoubleClick={() => goToEntry(entry.id)}
+                  title="Double-click to jump to this line in the main view"
+                >
+                  {visibleColumns.map((column) => (
+                    <div key={column} className={tableStyles.cell}>
+                      {renderLogCell(column, entry)}
+                    </div>
+                  ))}
+                </div>
+              ))
+            )}
+          </div>
+        </>
       )}
     </div>
   );

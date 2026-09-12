@@ -71,7 +71,7 @@ export function Checkbox({
       className={[styles.checkbox, checked ? styles.checkboxOn : '', disabled ? styles.checkboxDisabled : ''].join(' ')}
       onClick={() => !disabled && onChange(!checked)}
     >
-      {checked && <CheckIcon size={11} color={disabled ? 'var(--text-muted)' : 'var(--text-on-accent)'} />}
+      {checked && <CheckIcon size={11} color={disabled ? 'var(--text-muted)' : 'var(--accent)'} />}
     </button>
   );
 }

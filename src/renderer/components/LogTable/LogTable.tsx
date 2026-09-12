@@ -1,15 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import styles from './LogTable.module.css';
 import { useLogStore } from '../../state/logStore';
-import { useFilterStore } from '../../state/filterStore';
 import { useDeviceStore } from '../../state/deviceStore';
 import { useUiStore } from '../../state/uiStore';
 import { useTableSettingsStore } from '../../state/tableSettingsStore';
 import { useVisibleEntries } from '../../lib/useVisibleEntries';
 import { computeTableLayout } from '../../lib/tableLayout';
-import { levelColorVar } from '../../lib/levelColors';
-import { highlightText } from '../../lib/highlight';
+import { renderLogCell } from '../../lib/renderLogCell';
 import { copyToClipboard } from '../../lib/clipboard';
 import { CopyIcon, ExpandIcon } from '../../lib/icons';
 import { COLUMN_LABELS, type ColumnKey, type LogEntry, type ResizableColumnKey } from '@shared/types';
@@ -34,9 +32,6 @@ export function LogTable() {
   const autoscroll = useLogStore((s) => s.autoscroll);
   const scrollRequest = useLogStore((s) => s.scrollRequest);
   const clearScrollRequest = useLogStore((s) => s.clearScrollRequest);
-  const searchQuery = useFilterStore((s) => s.searchQuery);
-  const searchRegex = useFilterStore((s) => s.searchRegex);
-  const searchCaseSensitive = useFilterStore((s) => s.searchCaseSensitive);
   const captureState = useDeviceStore((s) => s.captureState);
   const openLogDetailDialog = useUiStore((s) => s.openLogDetailDialog);
   const { visible, compiled } = useVisibleEntries();
@@ -146,29 +141,6 @@ export function LogTable() {
     };
   }, [contextMenu]);
 
-  function renderCell(column: ColumnKey, entry: LogEntry): ReactNode {
-    // Every column takes its color from the entry's LEVEL, not just the LEVEL
-    // badge itself — this makes a row's severity readable at a glance across
-    // the whole line, matching classic Android logcat viewers.
-    const color = levelColorVar(entry.level);
-    switch (column) {
-      case 'index':
-        return <span style={{ color }}>{entry.id}</span>;
-      case 'time':
-        return <span style={{ color }}>{entry.time}</span>;
-      case 'pid':
-        return <span style={{ color }}>{entry.pid}</span>;
-      case 'tid':
-        return <span style={{ color }}>{entry.tid}</span>;
-      case 'level':
-        return <span style={{ color, fontWeight: 700 }}>{entry.level}</span>;
-      case 'tag':
-        return <span style={{ color }}>{highlightText(entry.tag, searchQuery, searchRegex, searchCaseSensitive)}</span>;
-      case 'message':
-        return <span style={{ color }}>{highlightText(entry.message, searchQuery, searchRegex, searchCaseSensitive)}</span>;
-    }
-  }
-
   return (
     <div className={styles.tableArea}>
       <div className={[styles.headerRow, 'mono'].join(' ')} style={{ gridTemplateColumns: gridTemplate }}>
@@ -227,7 +199,7 @@ export function LogTable() {
               >
                 {visibleColumns.map((column) => (
                   <div key={column} className={styles.cell}>
-                    {renderCell(column, entry)}
+                    {renderLogCell(column, entry)}
                   </div>
                 ))}
               </div>

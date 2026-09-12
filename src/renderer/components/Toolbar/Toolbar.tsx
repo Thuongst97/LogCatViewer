@@ -2,11 +2,11 @@ import styles from './Toolbar.module.css';
 import { Button } from '../common/ui';
 import {
   FolderOpenIcon,
+  GearIcon,
   PauseIcon,
   PlayIcon,
   SaveIcon,
   SidebarIcon,
-  SlidersIcon,
   StopIcon,
   TerminalMarkIcon,
   TrashIcon
@@ -135,7 +135,7 @@ export function Toolbar() {
       <div className={styles.spacer} />
 
       <Button onClick={openSettingsDialog} title="Settings" style={{ padding: 6 }}>
-        <SlidersIcon size={17} />
+        <GearIcon size={17} />
       </Button>
     </div>
   );

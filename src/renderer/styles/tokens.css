@@ -50,10 +50,6 @@
 
   --marker-purple: #a56bd6;
 
-  /* Used only by the smaller, denser Search Results dock — the main log table
-     is deliberately flat with no per-row background (see LogTable.tsx). */
-  --row-stripe: rgba(255, 255, 255, 0.02);
-
   --scrollbar-thumb: rgba(255, 255, 255, 0.18);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.32);
   --shadow-dialog: 0 20px 60px rgba(0, 0, 0, 0.55);
@@ -95,8 +91,6 @@
   --level-f: #b0175e;
 
   --marker-purple: #7c4aa8;
-
-  --row-stripe: rgba(15, 20, 30, 0.025);
 
   --scrollbar-thumb: rgba(0, 0, 0, 0.22);
   --scrollbar-thumb-hover: rgba(0, 0, 0, 0.38);

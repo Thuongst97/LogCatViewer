@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import styles from './FilterSidebar.module.css';
+import tableStyles from '../LogTable/LogTable.module.css';
 import { Checkbox, Chip } from '../common/ui';
-import { FilterNegativeIcon, FilterPositiveIcon, FolderOpenIcon, PencilIcon, PlusIcon, SaveIcon, XIcon } from '../../lib/icons';
+import { CheckIcon, FilterNegativeIcon, FilterPositiveIcon, FolderOpenIcon, PencilIcon, PlusIcon, SaveIcon, XIcon } from '../../lib/icons';
 import { useFilterStore } from '../../state/filterStore';
 import { useUiStore } from '../../state/uiStore';
 import { FolderTree } from '../FolderTree/FolderTree';
 import { openProjectFile, saveProjectFile } from '../../lib/projectFile';
 import type { Filter } from '@shared/types';
+
+interface TabMenuState {
+  x: number;
+  y: number;
+}
 
 export function FilterSidebar() {
   const [tab, setTab] = useState<'filters' | 'explore'>('filters');
@@ -14,6 +20,7 @@ export function FilterSidebar() {
   const filtersEnabled = useFilterStore((s) => s.filtersEnabled);
   const toggleFiltersEnabled = useFilterStore((s) => s.toggleFiltersEnabled);
   const toggleFilterActive = useFilterStore((s) => s.toggleFilterActive);
+  const setAllFiltersActive = useFilterStore((s) => s.setAllFiltersActive);
   const removeFilter = useFilterStore((s) => s.removeFilter);
   const openFilterEditor = useUiStore((s) => s.openFilterEditor);
   const sidebarWidth = useUiStore((s) => s.sidebarWidth);
@@ -21,12 +28,41 @@ export function FilterSidebar() {
   const [selectedId, setSelectedId] = useState<string | null>(filters[1]?.id ?? filters[0]?.id ?? null);
   const [resizing, setResizing] = useState(false);
   const dragStart = useRef<{ startX: number; startWidth: number } | null>(null);
+  const [tabMenu, setTabMenu] = useState<TabMenuState | null>(null);
 
   function handleResizeStart(e: ReactMouseEvent) {
     e.preventDefault();
     dragStart.current = { startX: e.clientX, startWidth: sidebarWidth };
     setResizing(true);
   }
+
+  function handleTabsContextMenu(e: ReactMouseEvent) {
+    e.preventDefault();
+    const ESTIMATED_MENU_WIDTH = 200;
+    const ESTIMATED_MENU_HEIGHT = 90;
+    setTabMenu({
+      x: Math.min(e.clientX, window.innerWidth - ESTIMATED_MENU_WIDTH),
+      y: Math.min(e.clientY, window.innerHeight - ESTIMATED_MENU_HEIGHT)
+    });
+  }
+
+  useEffect(() => {
+    if (!tabMenu) return;
+    const dismiss = () => setTabMenu(null);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') dismiss();
+    };
+    document.addEventListener('click', dismiss);
+    document.addEventListener('contextmenu', dismiss, true);
+    document.addEventListener('scroll', dismiss, true);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('click', dismiss);
+      document.removeEventListener('contextmenu', dismiss, true);
+      document.removeEventListener('scroll', dismiss, true);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [tabMenu]);
 
   useEffect(() => {
     if (!resizing) return;
@@ -62,13 +98,47 @@ export function FilterSidebar() {
         title="Drag to resize sidebar"
       />
       <div className={styles.tabs}>
-        <button className={[styles.tab, tab === 'filters' ? styles.tabActive : ''].join(' ')} onClick={() => setTab('filters')}>
+        <button
+          className={[styles.tab, tab === 'filters' ? styles.tabActive : ''].join(' ')}
+          onClick={() => setTab('filters')}
+          onContextMenu={handleTabsContextMenu}
+        >
           Filters
         </button>
         <button className={[styles.tab, tab === 'explore' ? styles.tabActive : ''].join(' ')} onClick={() => setTab('explore')}>
           Explore
         </button>
       </div>
+
+      {tabMenu && (
+        <div
+          className={tableStyles.contextMenu}
+          style={{ left: tabMenu.x, top: tabMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.stopPropagation()}
+        >
+          <button
+            className={tableStyles.contextMenuItem}
+            onClick={() => {
+              setAllFiltersActive(true);
+              setTabMenu(null);
+            }}
+          >
+            <CheckIcon size={13} />
+            Select All Filters
+          </button>
+          <button
+            className={tableStyles.contextMenuItem}
+            onClick={() => {
+              setAllFiltersActive(false);
+              setTabMenu(null);
+            }}
+          >
+            <XIcon size={13} />
+            Unselect All
+          </button>
+        </div>
+      )}
 
       {tab === 'filters' ? (
         <div className={styles.listSection}>

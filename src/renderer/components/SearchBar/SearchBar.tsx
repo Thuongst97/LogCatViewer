@@ -1,6 +1,6 @@
 import styles from './SearchBar.module.css';
 import { Chip } from '../common/ui';
-import { AutoscrollIcon, SearchIcon } from '../../lib/icons';
+import { AutoscrollIcon, SearchIcon, XIcon } from '../../lib/icons';
 import { useFilterStore, ALL_LOG_LEVELS } from '../../state/filterStore';
 import { useLogStore } from '../../state/logStore';
 import { useUiStore } from '../../state/uiStore';
@@ -43,6 +43,11 @@ export function SearchBar() {
           }}
           placeholder="Search logs… (tag, message, pid)"
         />
+        {searchQuery.length > 0 && (
+          <button className={styles.clearBtn} onClick={() => setSearchQuery('')} title="Clear search" aria-label="Clear search">
+            <XIcon size={12} color="var(--text-muted)" />
+          </button>
+        )}
       </div>
 
       <Chip active={searchRegex} onClick={() => setSearchRegex(!searchRegex)} title="Regular expression" style={{ width: 30, height: 26 }}>

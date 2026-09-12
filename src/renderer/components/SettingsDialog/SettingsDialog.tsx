@@ -2,7 +2,7 @@ import { useState } from 'react';
 import styles from './SettingsDialog.module.css';
 import { Modal, DialogHeader, DialogBody, DialogFooter } from '../common/Modal';
 import { Button, Checkbox, LabelXs, Pill } from '../common/ui';
-import { SlidersIcon } from '../../lib/icons';
+import { GearIcon } from '../../lib/icons';
 import { useUiStore, applyThemeToDocument, type EffectiveTheme } from '../../state/uiStore';
 import { useTableSettingsStore, MIN_FONT_SIZE, MAX_FONT_SIZE, MIN_ROW_HEIGHT, MAX_ROW_HEIGHT } from '../../state/tableSettingsStore';
 import { getSystemTheme } from '../../lib/theme';
@@ -18,7 +18,7 @@ export function SettingsDialog() {
 
   return (
     <Modal onClose={closeDialog} width={440}>
-      <DialogHeader icon={<SlidersIcon size={16} color="var(--accent-text)" />} title="Settings" subtitle="Preferences and log table display" onClose={closeDialog} />
+      <DialogHeader icon={<GearIcon size={16} color="var(--accent-text)" />} title="Settings" subtitle="Preferences and log table display" onClose={closeDialog} />
 
       <div className={styles.tabs}>
         <button className={[styles.tab, tab === 'general' ? styles.tabActive : ''].join(' ')} onClick={() => setTab('general')}>

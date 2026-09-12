@@ -19,6 +19,7 @@ interface FilterState {
   updateFilter: (id: string, patch: Partial<Filter>) => void;
   removeFilter: (id: string) => void;
   toggleFilterActive: (id: string) => void;
+  setAllFiltersActive: (active: boolean) => void;
   toggleFiltersEnabled: () => void;
   toggleQuickLevel: (level: LogLevel) => void;
   setSearchQuery: (query: string) => void;
@@ -81,6 +82,12 @@ export const useFilterStore = create<FilterState>((set) => ({
   toggleFilterActive: (id) =>
     set((state) => {
       const filters = state.filters.map((f) => (f.id === id ? { ...f, active: !f.active } : f));
+      persist(filters);
+      return { filters };
+    }),
+  setAllFiltersActive: (active) =>
+    set((state) => {
+      const filters = state.filters.map((f) => ({ ...f, active }));
       persist(filters);
       return { filters };
     }),
