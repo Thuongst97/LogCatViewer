@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { IpcChannels } from '@shared/ipcChannels';
 import type { RendererApi } from '@shared/ipcChannels';
-import type { AppSettings, Device, ExportOptions, LogEntry, ProjectFile } from '@shared/types';
+import type { AppSettings, Device, ExploreEntry, ExportOptions, LogEntry, ProjectFile } from '@shared/types';
 
 /** Subscribes to a main->renderer event channel and returns an unsubscribe function. */
 function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
@@ -32,6 +32,7 @@ const api: RendererApi = {
   },
   files: {
     openLogDialog: () => ipcRenderer.invoke(IpcChannels.FileOpenLogDialog),
+    openLogAtPath: (path: string) => ipcRenderer.invoke(IpcChannels.FileOpenLogAtPath, path),
     openProjectDialog: () => ipcRenderer.invoke(IpcChannels.FileOpenProjectDialog),
     saveProjectDialog: (defaultName: string) => ipcRenderer.invoke(IpcChannels.FileSaveProjectDialog, defaultName),
     saveProject: (path: string, project: ProjectFile) =>
@@ -45,6 +46,11 @@ const api: RendererApi = {
   },
   clipboard: {
     writeText: (text: string) => ipcRenderer.invoke(IpcChannels.ClipboardWriteText, text)
+  },
+  fs: {
+    listRoots: (): Promise<ExploreEntry[]> => ipcRenderer.invoke(IpcChannels.FsListRoots),
+    listChildren: (path: string): Promise<ExploreEntry[]> => ipcRenderer.invoke(IpcChannels.FsListChildren, path),
+    openInExplorer: (path: string) => ipcRenderer.invoke(IpcChannels.FsOpenInExplorer, path)
   }
 };
 

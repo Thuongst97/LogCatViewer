@@ -3,8 +3,35 @@
 // i.e. purely for fast visual QA of the UI against the approved mockups
 // without spawning a real adb process. Never bundled into the packaged app:
 // electron's preload script always provides the real `window.api` first.
-import { DEFAULT_SETTINGS, type AppSettings, type Device, type LogEntry } from '@shared/types';
+import { DEFAULT_SETTINGS, type AppSettings, type Device, type ExploreEntry, type LogEntry } from '@shared/types';
 import type { RendererApi } from '@shared/ipcChannels';
+
+// A tiny fake filesystem for previewing the Explore tab outside Electron — keyed
+// by parent path, matching the shape `fs:list-children` would resolve to. Mixes
+// in a couple of fake .log/.txt files so double-click-to-open can be exercised
+// without Electron's real fs access.
+const FAKE_FS: Record<string, { name: string; kind: ExploreEntry['kind'] }[]> = {
+  'C:\\': [
+    { name: 'Program Files', kind: 'directory' },
+    { name: 'Program Files (x86)', kind: 'directory' },
+    { name: 'Projects', kind: 'directory' },
+    { name: 'Users', kind: 'directory' }
+  ],
+  'C:\\Projects': [
+    { name: 'LogCatViewer', kind: 'directory' },
+    { name: 'build-output.log', kind: 'file' }
+  ],
+  'C:\\Users': [{ name: 'Hi', kind: 'directory' }],
+  'C:\\Users\\Hi': [
+    { name: '.android', kind: 'directory' },
+    { name: '.gradle', kind: 'directory' },
+    { name: 'Desktop', kind: 'directory' },
+    { name: 'Documents', kind: 'directory' },
+    { name: 'Downloads', kind: 'directory' },
+    { name: 'logcat_2026-09-12.log', kind: 'file' },
+    { name: 'crash_notes.txt', kind: 'file' }
+  ]
+};
 
 const SAMPLE_DEVICES: Device[] = [
   { serial: 'emulator-5554', model: 'Pixel 7 Pro', androidVersion: '14', state: 'device' },
@@ -109,6 +136,7 @@ export const mockApi: RendererApi = {
   },
   files: {
     openLogDialog: async () => null,
+    openLogAtPath: async (path: string) => ({ path, entries: Array.from({ length: 12 }, () => makeEntry()) }),
     openProjectDialog: async () => null,
     saveProjectDialog: async () => null,
     saveProject: async () => {}
@@ -127,6 +155,15 @@ export const mockApi: RendererApi = {
         // Swallowed — this mock only exists for visual QA outside Electron.
       }
     }
+  },
+  fs: {
+    listRoots: async (): Promise<ExploreEntry[]> => [{ name: 'C:\\', path: 'C:\\', kind: 'directory' }],
+    listChildren: async (path: string): Promise<ExploreEntry[]> => {
+      const entries = FAKE_FS[path] ?? [];
+      const separator = path.endsWith('\\') ? '' : '\\';
+      return entries.map(({ name, kind }) => ({ name, path: `${path}${separator}${name}`, kind }));
+    },
+    openInExplorer: async () => {}
   }
 };
 

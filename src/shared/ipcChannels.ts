@@ -5,6 +5,7 @@
 import type {
   AppSettings,
   Device,
+  ExploreEntry,
   ExportOptions,
   LogEntry,
   ProjectFile
@@ -22,12 +23,16 @@ export const IpcChannels = {
   SettingsGet: 'settings:get',
   SettingsSet: 'settings:set',
   FileOpenLogDialog: 'file:open-log-dialog',
+  FileOpenLogAtPath: 'file:open-log-at-path',
   FileOpenProjectDialog: 'file:open-project-dialog',
   FileSaveProjectDialog: 'file:save-project-dialog',
   FileSaveProject: 'file:save-project',
   ExportShowSaveDialog: 'export:show-save-dialog',
   ExportRun: 'export:run',
   ClipboardWriteText: 'clipboard:write-text',
+  FsListRoots: 'fs:list-roots',
+  FsListChildren: 'fs:list-children',
+  FsOpenInExplorer: 'fs:open-in-explorer',
 
   // Main -> Renderer (send/on, fire-and-forget events)
   DevicesChanged: 'devices:changed',
@@ -73,6 +78,10 @@ export interface RendererApi {
   };
   files: {
     openLogDialog: () => Promise<{ path: string; entries: LogEntry[] } | null>;
+    /** Reads and parses a log file whose path is already known (e.g. a
+     *  double-click in the Explore tab) — no native picker involved. Resolves
+     *  null if the file can't be read (deleted, permissions, ...). */
+    openLogAtPath: (path: string) => Promise<{ path: string; entries: LogEntry[] } | null>;
     openProjectDialog: () => Promise<ProjectFile | null>;
     saveProjectDialog: (defaultName: string) => Promise<string | null>;
     saveProject: (path: string, project: ProjectFile) => Promise<void>;
@@ -86,5 +95,10 @@ export interface RendererApi {
      *  renderer's web Clipboard API, which is subject to browser permission
      *  policies that don't apply the same way inside a trusted app shell. */
     writeText: (text: string) => Promise<void>;
+  };
+  fs: {
+    listRoots: () => Promise<ExploreEntry[]>;
+    listChildren: (path: string) => Promise<ExploreEntry[]>;
+    openInExplorer: (path: string) => Promise<void>;
   };
 }

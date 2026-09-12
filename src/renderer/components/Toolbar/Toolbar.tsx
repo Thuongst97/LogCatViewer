@@ -6,6 +6,7 @@ import {
   PauseIcon,
   PlayIcon,
   SaveIcon,
+  SidebarIcon,
   SlidersIcon,
   StopIcon,
   TerminalMarkIcon,
@@ -14,18 +15,19 @@ import {
 import { DeviceSelectorControl } from '../DeviceSelector/DeviceSelector';
 import { useDeviceStore, useSelectedDevice } from '../../state/deviceStore';
 import { useLogStore } from '../../state/logStore';
-import { useFilterStore } from '../../state/filterStore';
 import { useUiStore } from '../../state/uiStore';
-import type { ProjectFile } from '@shared/types';
+import { saveLogAsFile } from '../../lib/saveLog';
 
 export function Toolbar() {
   const captureState = useDeviceStore((s) => s.captureState);
   const selectedDevice = useSelectedDevice();
   const setCaptureState = useDeviceStore((s) => s.setCaptureState);
   const setError = useDeviceStore((s) => s.setError);
+  const entries = useLogStore((s) => s.entries);
   const appendBatch = useLogStore((s) => s.appendBatch);
   const clearLog = useLogStore((s) => s.clear);
-  const filters = useFilterStore((s) => s.filters);
+  const sidebarVisible = useUiStore((s) => s.sidebarVisible);
+  const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const openExportDialog = useUiStore((s) => s.openExportDialog);
   const openSettingsDialog = useUiStore((s) => s.openSettingsDialog);
 
@@ -78,16 +80,8 @@ export function Toolbar() {
     appendBatch(result.entries);
   }
 
-  async function handleSaveProject() {
-    const project: ProjectFile = {
-      name: 'LogCat Viewer Project',
-      createdAt: new Date().toISOString(),
-      modifiedAt: new Date().toISOString(),
-      filters
-    };
-    const path = await window.api.files.saveProjectDialog(project.name);
-    if (!path) return;
-    await window.api.files.saveProject(path, project);
+  async function handleSaveLog() {
+    await saveLogAsFile(entries);
   }
 
   return (
@@ -98,6 +92,10 @@ export function Toolbar() {
         </div>
         <span className={styles.brandTitle}>LogCat Viewer</span>
       </div>
+
+      <Button onClick={toggleSidebar} variant={sidebarVisible ? 'active' : 'plain'} title={sidebarVisible ? 'Hide sidebar' : 'Show sidebar'} style={{ padding: 6 }}>
+        <SidebarIcon size={16} />
+      </Button>
 
       <div className={styles.divider} />
 
@@ -131,7 +129,7 @@ export function Toolbar() {
         <FolderOpenIcon size={15} />
         Open
       </Button>
-      <Button onClick={handleSaveProject} title="Save current filters as a project">
+      <Button onClick={handleSaveLog} disabled={entries.length === 0} title="Save the captured log to a .log file">
         <SaveIcon size={15} />
         Save
       </Button>

@@ -32,12 +32,23 @@ button {
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 14px;
+  height: 14px;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
-  border-radius: 5px;
+  border-radius: 0;
+  /* A virtualized table's scroll height can run into the millions of pixels for a
+     large buffer, which shrinks a proportionally-sized thumb to a sliver — this
+     floors it at a size that's always easy to grab regardless of buffer length. */
+  min-height: 40px;
+  min-width: 40px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+::-webkit-scrollbar-thumb:active {
+  background: var(--accent);
 }
 ::-webkit-scrollbar-track {
   background: transparent;

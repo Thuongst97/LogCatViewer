@@ -68,11 +68,23 @@ export function LogTable() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rowHeight]);
 
+  // Turning Autoscroll ON (the toolbar button) is a deliberate "take me to the
+  // bottom" action — it must win even if the user had scrolled up earlier, so
+  // this clears that flag before scrolling. Split out from the effect below:
+  // that one is gated on the flag on purpose (new data shouldn't yank the view
+  // back down while the user is mid-scroll reading old lines), this one isn't.
+  useEffect(() => {
+    if (!autoscroll || visible.length === 0) return;
+    userScrolledUp.current = false;
+    virtualizer.scrollToIndex(visible.length - 1, { align: 'end' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoscroll]);
+
   useEffect(() => {
     if (!autoscroll || userScrolledUp.current || visible.length === 0) return;
     virtualizer.scrollToIndex(visible.length - 1, { align: 'end' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible.length, autoscroll]);
+  }, [visible.length]);
 
   // Jump to a specific entry on request (e.g. a Search Results double-click — plan
   // follow-up, mirrors DLT Viewer). Only takes effect if the entry is currently
@@ -135,27 +147,25 @@ export function LogTable() {
   }, [contextMenu]);
 
   function renderCell(column: ColumnKey, entry: LogEntry): ReactNode {
+    // Every column takes its color from the entry's LEVEL, not just the LEVEL
+    // badge itself — this makes a row's severity readable at a glance across
+    // the whole line, matching classic Android logcat viewers.
+    const color = levelColorVar(entry.level);
     switch (column) {
       case 'index':
-        return <span style={{ color: 'var(--text-muted)' }}>{entry.id}</span>;
+        return <span style={{ color }}>{entry.id}</span>;
       case 'time':
-        return <span style={{ color: 'var(--text-muted)' }}>{entry.time}</span>;
+        return <span style={{ color }}>{entry.time}</span>;
       case 'pid':
-        return <span style={{ color: 'var(--text-secondary)' }}>{entry.pid}</span>;
+        return <span style={{ color }}>{entry.pid}</span>;
       case 'tid':
-        return <span style={{ color: 'var(--text-secondary)' }}>{entry.tid}</span>;
+        return <span style={{ color }}>{entry.tid}</span>;
       case 'level':
-        return <span style={{ color: levelColorVar(entry.level), fontWeight: 700 }}>{entry.level}</span>;
+        return <span style={{ color, fontWeight: 700 }}>{entry.level}</span>;
       case 'tag':
-        return <span style={{ color: 'var(--text-secondary)' }}>{highlightText(entry.tag, searchQuery, searchRegex, searchCaseSensitive)}</span>;
-      case 'message': {
-        const emphasized = entry.level === 'E' || entry.level === 'F';
-        return (
-          <span style={{ color: emphasized ? levelColorVar(entry.level) : 'var(--text-primary)' }}>
-            {highlightText(entry.message, searchQuery, searchRegex, searchCaseSensitive)}
-          </span>
-        );
-      }
+        return <span style={{ color }}>{highlightText(entry.tag, searchQuery, searchRegex, searchCaseSensitive)}</span>;
+      case 'message':
+        return <span style={{ color }}>{highlightText(entry.message, searchQuery, searchRegex, searchCaseSensitive)}</span>;
     }
   }
 

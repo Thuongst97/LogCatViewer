@@ -82,6 +82,14 @@ export function SearchIcon({ size, color = 'currentColor', style }: IconProps) {
   );
 }
 
+export function ChevronRightIcon({ size, color = 'currentColor', style }: IconProps) {
+  return (
+    <svg {...base(size)} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={style}>
+      <path d="M9 6l6 6-6 6" />
+    </svg>
+  );
+}
+
 export function ChevronDownIcon({ size, color = 'currentColor', style }: IconProps) {
   return (
     <svg {...base(size)} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={style}>
@@ -209,6 +217,25 @@ export function CopyIcon({ size, color = 'currentColor', style }: IconProps) {
     <svg {...base(size)} fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={style}>
       <rect x="9" y="9" width="11" height="11" rx="1.5" />
       <path d="M6 15H5a1 1 0 01-1-1V5a1 1 0 011-1h9a1 1 0 011 1v1" />
+    </svg>
+  );
+}
+
+export function SidebarIcon({ size, color = 'currentColor', style }: IconProps) {
+  return (
+    <svg {...base(size)} fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={style}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+      <line x1="9.5" y1="4.5" x2="9.5" y2="19.5" />
+    </svg>
+  );
+}
+
+export function FileTextIcon({ size, color = 'currentColor', style }: IconProps) {
+  return (
+    <svg {...base(size)} fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={style}>
+      <path d="M6 3.5h8l4 4V19a1 1 0 01-1 1H6a1 1 0 01-1-1V4.5a1 1 0 011-1z" />
+      <path d="M14 3.5V8h4" />
+      <path d="M8 12.5h8M8 15.5h8M8 9.5h3" />
     </svg>
   );
 }

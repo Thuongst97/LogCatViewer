@@ -4,6 +4,7 @@ import { AdbService } from './services/AdbService';
 import { FileService } from './services/FileService';
 import { ExportService } from './services/ExportService';
 import { SettingsService } from './services/SettingsService';
+import { FileSystemService } from './services/FileSystemService';
 import { registerIpcHandlers } from './ipc/registerIpcHandlers';
 import { buildApplicationMenu } from './menu';
 import { WindowState } from './windowState';
@@ -14,6 +15,7 @@ const settings = new SettingsService();
 const windowState = new WindowState();
 const fileService = new FileService();
 const exportService = new ExportService();
+const fileSystemService = new FileSystemService();
 let adbService: AdbService;
 
 async function createWindow(): Promise<void> {
@@ -30,7 +32,11 @@ async function createWindow(): Promise<void> {
     minHeight: 640,
     show: false,
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#1a1d23' : '#eef0f3',
-    autoHideMenuBar: false,
+    // The menu bar is hidden by default (user feedback: it just sat there as
+    // a plain OS strip above the toolbar) — pressing Alt reveals it, the
+    // standard Windows convention, so File > Open Project, Find, and Toggle
+    // Sidebar (which have no other entry point in the app) stay reachable.
+    autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -78,7 +84,8 @@ async function bootstrap(): Promise<void> {
     adb: adbService,
     files: fileService,
     exportSvc: exportService,
-    settings
+    settings,
+    fs: fileSystemService
   });
 }
 

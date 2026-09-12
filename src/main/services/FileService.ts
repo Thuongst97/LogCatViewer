@@ -15,8 +15,12 @@ export class FileService {
       properties: ['openFile']
     });
     if (result.canceled || result.filePaths.length === 0) return null;
+    return this.openLogAtPath(result.filePaths[0]);
+  }
 
-    const path = result.filePaths[0];
+  /** Same read-and-parse as openLogDialog, but for a path already known (e.g. a
+   *  double-click in the Explore tab) — no picker involved. */
+  async openLogAtPath(path: string): Promise<{ path: string; entries: LogEntry[] }> {
     const content = await readFile(path, 'utf8');
     const parser = new LogParser(path, 1);
     parser.feed(content);

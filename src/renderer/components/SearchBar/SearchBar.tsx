@@ -83,7 +83,7 @@ export function SearchBar() {
 
       <Chip active={autoscroll} onClick={() => setAutoscroll(!autoscroll)} style={{ height: 26, padding: '0 10px', gap: 6, fontWeight: 500 }}>
         <AutoscrollIcon size={14} />
-        Autoscroll
+        Auto Scroll
       </Chip>
     </div>
   );

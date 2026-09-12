@@ -54,7 +54,8 @@
      is deliberately flat with no per-row background (see LogTable.tsx). */
   --row-stripe: rgba(255, 255, 255, 0.02);
 
-  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.18);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.32);
   --shadow-dialog: 0 20px 60px rgba(0, 0, 0, 0.55);
 
   --success: #4caf50;
@@ -97,7 +98,8 @@
 
   --row-stripe: rgba(15, 20, 30, 0.025);
 
-  --scrollbar-thumb: rgba(0, 0, 0, 0.14);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.22);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.38);
   --shadow-dialog: 0 16px 40px rgba(30, 34, 42, 0.18);
 
   --success: #2e8b3d;

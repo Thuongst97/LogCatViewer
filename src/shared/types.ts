@@ -85,6 +85,21 @@ export interface ProjectFile {
   filters: Filter[];
 }
 
+/** One node in the Explore tab's filesystem tree (a DLT-Viewer-style directory
+ *  browser). Directories are always listed; files are listed too, but only
+ *  when their extension is a recognized log format (see LOG_FILE_EXTENSIONS)
+ *  — double-clicking one of those opens it directly in the log table, the
+ *  same as File > Open Log File… Any other file type is filtered out rather
+ *  than shown as inert clutter. */
+export interface ExploreEntry {
+  name: string;
+  path: string;
+  kind: 'directory' | 'file';
+}
+
+/** File extensions the Explore tree will show and let you double-click open. */
+export const LOG_FILE_EXTENSIONS = ['.log', '.txt'];
+
 export type ThemePreference = 'light' | 'dark' | 'system';
 
 /** The 7 columns the log table can show. `message` can't be hidden — it's the one

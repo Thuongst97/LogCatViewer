@@ -10,13 +10,16 @@
   grid-template-columns: 60px 96px 56px 56px 60px 150px 1fr;
   height: 28px;
   flex-shrink: 0;
-  background: var(--bg-panel);
-  /* No separate border here — each .cell already draws a bottom border, and this
-     row uses that same .cell class, so adding another would double up the line. */
+  background: var(--bg-panel-alt);
+  /* Each .cell already draws its own bottom border (see .cell below) — bumped to
+     --border-strong just for header cells so the header/body split reads clearly. */
   font-size: 10.5px;
-  font-weight: 600;
+  font-weight: 800;
   letter-spacing: 0.06em;
-  color: var(--text-muted);
+  color: var(--text-primary);
+}
+.headerRow .cell {
+  border-bottom-color: var(--border-strong);
 }
 .scrollArea {
   flex-grow: 1;

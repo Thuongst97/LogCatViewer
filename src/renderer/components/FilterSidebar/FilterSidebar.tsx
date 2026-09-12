@@ -1,31 +1,73 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import styles from './FilterSidebar.module.css';
 import { Checkbox, Chip } from '../common/ui';
 import { FilterNegativeIcon, FilterPositiveIcon, PencilIcon, PlusIcon, XIcon } from '../../lib/icons';
 import { useFilterStore } from '../../state/filterStore';
 import { useUiStore } from '../../state/uiStore';
+import { FolderTree } from '../FolderTree/FolderTree';
 import type { Filter } from '@shared/types';
 
 export function FilterSidebar() {
-  const [tab, setTab] = useState<'filters' | 'sources'>('filters');
+  const [tab, setTab] = useState<'filters' | 'explore'>('filters');
   const filters = useFilterStore((s) => s.filters);
   const filtersEnabled = useFilterStore((s) => s.filtersEnabled);
   const toggleFiltersEnabled = useFilterStore((s) => s.toggleFiltersEnabled);
   const toggleFilterActive = useFilterStore((s) => s.toggleFilterActive);
   const removeFilter = useFilterStore((s) => s.removeFilter);
   const openFilterEditor = useUiStore((s) => s.openFilterEditor);
+  const sidebarWidth = useUiStore((s) => s.sidebarWidth);
+  const setSidebarWidth = useUiStore((s) => s.setSidebarWidth);
   const [selectedId, setSelectedId] = useState<string | null>(filters[1]?.id ?? filters[0]?.id ?? null);
+  const [resizing, setResizing] = useState(false);
+  const dragStart = useRef<{ startX: number; startWidth: number } | null>(null);
 
   const activeCount = filters.filter((f) => f.active).length;
 
+  function handleResizeStart(e: ReactMouseEvent) {
+    e.preventDefault();
+    dragStart.current = { startX: e.clientX, startWidth: sidebarWidth };
+    setResizing(true);
+  }
+
+  useEffect(() => {
+    if (!resizing) return;
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    function onMove(e: MouseEvent) {
+      if (!dragStart.current) return;
+      setSidebarWidth(dragStart.current.startWidth + (e.clientX - dragStart.current.startX));
+    }
+    function onUp() {
+      dragStart.current = null;
+      setResizing(false);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resizing]);
+
   return (
-    <div className={styles.sidebar}>
+    <div className={styles.sidebar} style={{ width: sidebarWidth }}>
+      <div
+        className={[styles.resizeHandle, resizing ? styles.resizing : ''].join(' ')}
+        onMouseDown={handleResizeStart}
+        title="Drag to resize sidebar"
+      />
       <div className={styles.tabs}>
         <button className={[styles.tab, tab === 'filters' ? styles.tabActive : ''].join(' ')} onClick={() => setTab('filters')}>
           Filters
         </button>
-        <button className={[styles.tab, tab === 'sources' ? styles.tabActive : ''].join(' ')} onClick={() => setTab('sources')}>
-          Sources
+        <button className={[styles.tab, tab === 'explore' ? styles.tabActive : ''].join(' ')} onClick={() => setTab('explore')}>
+          Explore
         </button>
       </div>
 
@@ -38,7 +80,7 @@ export function FilterSidebar() {
             style={{ height: 30, width: '100%', gap: 7, fontWeight: 600, fontSize: 12, marginBottom: 10 }}
           >
             {filtersEnabled ? <FilterPositiveIcon size={13} /> : <FilterNegativeIcon size={13} />}
-            {filtersEnabled ? 'Filters Applied' : 'Filters Bypassed'}
+            {filtersEnabled ? 'Filters Enabled' : 'Filters Disabled'}
           </Chip>
 
           <div className={styles.listHeader}>
@@ -51,7 +93,7 @@ export function FilterSidebar() {
             </button>
           </div>
 
-          <div className={styles.filterList} style={{ opacity: filtersEnabled ? 1 : 0.45 }}>
+          <div className={styles.filterList}>
             {filters.map((filter) => (
               <FilterRow
                 key={filter.id}
@@ -66,8 +108,8 @@ export function FilterSidebar() {
           </div>
         </div>
       ) : (
-        <div className={styles.listSection} style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-          Connected sources will appear here once multi-device capture ships (see IMPLEMENTATION_PLAN.md §7 &mdash; out of scope for v1&apos;s single-device toolbar).
+        <div className={styles.listSection} style={{ padding: 0 }}>
+          <FolderTree />
         </div>
       )}
     </div>

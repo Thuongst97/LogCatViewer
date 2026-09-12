@@ -1,16 +1,18 @@
 import { ipcMain, clipboard, type BrowserWindow } from 'electron';
 import { IpcChannels, type ExportRunPayload, type SaveProjectPayload } from '@shared/ipcChannels';
-import type { AppSettings, Device, ProjectFile } from '@shared/types';
+import type { AppSettings, Device, ExploreEntry, LogEntry, ProjectFile } from '@shared/types';
 import { AdbService } from '../services/AdbService';
 import { FileService } from '../services/FileService';
 import { ExportService } from '../services/ExportService';
 import { SettingsService } from '../services/SettingsService';
+import { FileSystemService } from '../services/FileSystemService';
 
 export interface AppServices {
   adb: AdbService;
   files: FileService;
   exportSvc: ExportService;
   settings: SettingsService;
+  fs: FileSystemService;
 }
 
 /**
@@ -19,7 +21,7 @@ export interface AppServices {
  * forwarded to the renderer as one-way `send` messages.
  */
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null, services: AppServices): void {
-  const { adb, files, exportSvc, settings } = services;
+  const { adb, files, exportSvc, settings, fs } = services;
 
   ipcMain.handle(IpcChannels.DevicesList, async (): Promise<Device[]> => {
     const cached = adb.getCachedDevices();
@@ -65,6 +67,14 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, servi
     return files.openLogDialog(window);
   });
 
+  ipcMain.handle(IpcChannels.FileOpenLogAtPath, async (_e, path: string): Promise<{ path: string; entries: LogEntry[] } | null> => {
+    try {
+      return await files.openLogAtPath(path);
+    } catch {
+      return null;
+    }
+  });
+
   ipcMain.handle(IpcChannels.FileOpenProjectDialog, async (): Promise<ProjectFile | null> => {
     const window = getWindow();
     if (!window) return null;
@@ -95,6 +105,14 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, servi
 
   ipcMain.handle(IpcChannels.ClipboardWriteText, async (_e, text: string): Promise<void> => {
     clipboard.writeText(text);
+  });
+
+  ipcMain.handle(IpcChannels.FsListRoots, async (): Promise<ExploreEntry[]> => fs.listRoots());
+
+  ipcMain.handle(IpcChannels.FsListChildren, async (_e, path: string): Promise<ExploreEntry[]> => fs.listChildren(path));
+
+  ipcMain.handle(IpcChannels.FsOpenInExplorer, async (_e, path: string): Promise<void> => {
+    await fs.openInExplorer(path);
   });
 
   // ---- Forward AdbService events to the renderer ----

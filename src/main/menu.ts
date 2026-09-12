@@ -14,8 +14,10 @@ export function buildApplicationMenu(getWindow: () => BrowserWindow | null): Men
       label: 'File',
       submenu: [
         { label: 'Open Log File…', accelerator: 'CmdOrCtrl+O', click: () => withWindow(getWindow, (w) => send(w, 'file:open-log')) },
+        { label: 'Save Log…', accelerator: 'CmdOrCtrl+S', click: () => withWindow(getWindow, (w) => send(w, 'file:save-log')) },
+        { type: 'separator' },
         { label: 'Open Project…', click: () => withWindow(getWindow, (w) => send(w, 'file:open-project')) },
-        { label: 'Save Project…', accelerator: 'CmdOrCtrl+S', click: () => withWindow(getWindow, (w) => send(w, 'file:save-project')) },
+        { label: 'Save Project…', accelerator: 'CmdOrCtrl+Shift+S', click: () => withWindow(getWindow, (w) => send(w, 'file:save-project')) },
         { type: 'separator' },
         { label: 'Export…', accelerator: 'CmdOrCtrl+E', click: () => withWindow(getWindow, (w) => send(w, 'file:export')) },
         { type: 'separator' },

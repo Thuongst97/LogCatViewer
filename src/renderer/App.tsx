@@ -14,6 +14,7 @@ import { useDeviceStore } from './state/deviceStore';
 import { useTableSettingsStore } from './state/tableSettingsStore';
 import { useUiStore, applyThemeToDocument, type EffectiveTheme } from './state/uiStore';
 import { getSystemTheme } from './lib/theme';
+import { saveLogAsFile } from './lib/saveLog';
 import type { AppSettings, ThemePreference } from '@shared/types';
 
 export default function App() {
@@ -97,6 +98,9 @@ export default function App() {
             clearLog();
             useLogStore.getState().appendBatch(result.entries);
           });
+          break;
+        case 'file:save-log':
+          saveLogAsFile(useLogStore.getState().entries);
           break;
         case 'file:open-project':
           window.api.files.openProjectDialog().then((project) => {
