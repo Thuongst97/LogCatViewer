@@ -64,15 +64,6 @@ export function SaveIcon({ size, color = 'currentColor', style }: IconProps) {
   );
 }
 
-export function ExportIcon({ size, color = 'currentColor', style }: IconProps) {
-  return (
-    <svg {...base(size)} fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={style}>
-      <path d="M12 15V4M8.5 7.5L12 4l3.5 3.5" />
-      <path d="M4.5 15v3.7a1 1 0 001 1h13a1 1 0 001-1V15" />
-    </svg>
-  );
-}
-
 export function SearchIcon({ size, color = 'currentColor', style }: IconProps) {
   return (
     <svg {...base(size)} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" style={style}>

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import styles from './FilterSidebar.module.css';
 import { Checkbox, Chip } from '../common/ui';
-import { FilterNegativeIcon, FilterPositiveIcon, PencilIcon, PlusIcon, XIcon } from '../../lib/icons';
+import { FilterNegativeIcon, FilterPositiveIcon, FolderOpenIcon, PencilIcon, PlusIcon, SaveIcon, XIcon } from '../../lib/icons';
 import { useFilterStore } from '../../state/filterStore';
 import { useUiStore } from '../../state/uiStore';
 import { FolderTree } from '../FolderTree/FolderTree';
+import { openProjectFile, saveProjectFile } from '../../lib/projectFile';
 import type { Filter } from '@shared/types';
 
 export function FilterSidebar() {
@@ -20,8 +21,6 @@ export function FilterSidebar() {
   const [selectedId, setSelectedId] = useState<string | null>(filters[1]?.id ?? filters[0]?.id ?? null);
   const [resizing, setResizing] = useState(false);
   const dragStart = useRef<{ startX: number; startWidth: number } | null>(null);
-
-  const activeCount = filters.filter((f) => f.active).length;
 
   function handleResizeStart(e: ReactMouseEvent) {
     e.preventDefault();
@@ -84,9 +83,14 @@ export function FilterSidebar() {
           </Chip>
 
           <div className={styles.listHeader}>
-            <span className="mono" style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-              {filters.length} filters &middot; {activeCount} active
-            </span>
+            <button className={styles.addBtn} onClick={openProjectFile} title="Load a different filter set from a project file">
+              <FolderOpenIcon size={12} />
+              Load
+            </button>
+            <button className={styles.addBtn} onClick={saveProjectFile} title="Save the current filter set to a project file">
+              <SaveIcon size={12} />
+              Save Filter
+            </button>
             <button className={styles.addBtn} onClick={() => openFilterEditor(null)}>
               <PlusIcon size={12} />
               Add

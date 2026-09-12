@@ -5,7 +5,6 @@ import { SearchBar } from './components/SearchBar/SearchBar';
 import { LogTable } from './components/LogTable/LogTable';
 import { SearchResultsDock } from './components/SearchResultsDock/SearchResultsDock';
 import { FilterEditorDialog } from './components/FilterEditorDialog/FilterEditorDialog';
-import { ExportDialog } from './components/ExportDialog/ExportDialog';
 import { SettingsDialog } from './components/SettingsDialog/SettingsDialog';
 import { LogDetailDialog } from './components/LogDetailDialog/LogDetailDialog';
 import { useLogStore } from './state/logStore';
@@ -15,6 +14,7 @@ import { useTableSettingsStore } from './state/tableSettingsStore';
 import { useUiStore, applyThemeToDocument, type EffectiveTheme } from './state/uiStore';
 import { getSystemTheme } from './lib/theme';
 import { saveLogAsFile } from './lib/saveLog';
+import { openProjectFile, saveProjectFile } from './lib/projectFile';
 import type { AppSettings, ThemePreference } from '@shared/types';
 
 export default function App() {
@@ -30,7 +30,6 @@ export default function App() {
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const toggleSearchResults = useUiStore((s) => s.toggleSearchResults);
   const sidebarVisible = useUiStore((s) => s.sidebarVisible);
-  const openExportDialog = useUiStore((s) => s.openExportDialog);
   const openSettingsDialog = useUiStore((s) => s.openSettingsDialog);
 
   // Initial load: settings (theme, table display prefs), device list.
@@ -41,6 +40,10 @@ export default function App() {
       setEffectiveTheme(resolved);
       applyThemeToDocument(resolved);
       useTableSettingsStore.getState().hydrate(settings.table);
+      // null means "never customized" — keep filterStore's built-in starter filters
+      // rather than hydrating an empty list. Uses setState directly (not the
+      // loadFilters action) so this read-back doesn't immediately re-persist it.
+      if (settings.filters) useFilterStore.setState({ filters: settings.filters });
     });
     window.api.devices.list().then(setDevices);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -86,9 +89,6 @@ export default function App() {
         case 'view:toggle-search-results':
           toggleSearchResults();
           break;
-        case 'file:export':
-          openExportDialog();
-          break;
         case 'file:settings':
           openSettingsDialog();
           break;
@@ -103,20 +103,10 @@ export default function App() {
           saveLogAsFile(useLogStore.getState().entries);
           break;
         case 'file:open-project':
-          window.api.files.openProjectDialog().then((project) => {
-            if (project) useFilterStore.getState().loadFilters(project.filters);
-          });
+          openProjectFile();
           break;
         case 'file:save-project':
-          window.api.files.saveProjectDialog('LogCat Viewer Project').then((path) => {
-            if (!path) return;
-            window.api.files.saveProject(path, {
-              name: 'LogCat Viewer Project',
-              createdAt: new Date().toISOString(),
-              modifiedAt: new Date().toISOString(),
-              filters: useFilterStore.getState().filters
-            });
-          });
+          saveProjectFile();
           break;
         case 'view:toggle-theme': {
           const next: ThemePreference = effectiveTheme === 'dark' ? 'light' : 'dark';
@@ -131,7 +121,7 @@ export default function App() {
       }
     });
     return off;
-  }, [clearLog, toggleSidebar, toggleSearchResults, openExportDialog, openSettingsDialog, effectiveTheme, setThemePreference, setEffectiveTheme]);
+  }, [clearLog, toggleSidebar, toggleSearchResults, openSettingsDialog, effectiveTheme, setThemePreference, setEffectiveTheme]);
 
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -146,7 +136,6 @@ export default function App() {
       <SearchResultsDock />
 
       {activeDialog === 'filterEditor' && <FilterEditorDialog />}
-      {activeDialog === 'export' && <ExportDialog />}
       {activeDialog === 'settings' && <SettingsDialog />}
       {activeDialog === 'logDetail' && <LogDetailDialog />}
     </div>

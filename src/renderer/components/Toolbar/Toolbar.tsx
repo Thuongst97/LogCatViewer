@@ -1,7 +1,6 @@
 import styles from './Toolbar.module.css';
 import { Button } from '../common/ui';
 import {
-  ExportIcon,
   FolderOpenIcon,
   PauseIcon,
   PlayIcon,
@@ -28,7 +27,6 @@ export function Toolbar() {
   const clearLog = useLogStore((s) => s.clear);
   const sidebarVisible = useUiStore((s) => s.sidebarVisible);
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
-  const openExportDialog = useUiStore((s) => s.openExportDialog);
   const openSettingsDialog = useUiStore((s) => s.openSettingsDialog);
 
   const isCapturing = captureState === 'capturing';
@@ -132,10 +130,6 @@ export function Toolbar() {
       <Button onClick={handleSaveLog} disabled={entries.length === 0} title="Save the captured log to a .log file">
         <SaveIcon size={15} />
         Save
-      </Button>
-      <Button onClick={openExportDialog} title="Export the log buffer">
-        <ExportIcon size={15} />
-        Export
       </Button>
 
       <div className={styles.spacer} />

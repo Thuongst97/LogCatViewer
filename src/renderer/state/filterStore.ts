@@ -42,6 +42,13 @@ const STARTER_FILTERS: Filter[] = [
   })
 ];
 
+/** Persists the working filter set so it survives an app restart (Settings > main
+ *  process, see shared/types.ts AppSettings.filters) — mirrors tableSettingsStore's
+ *  persist-on-every-mutation pattern. */
+function persist(filters: Filter[]): void {
+  window.api.settings.set({ filters });
+}
+
 export const useFilterStore = create<FilterState>((set) => ({
   filters: STARTER_FILTERS,
   filtersEnabled: true,
@@ -52,14 +59,31 @@ export const useFilterStore = create<FilterState>((set) => ({
 
   addFilter: (overrides) => {
     const filter = createEmptyFilter(overrides);
-    set((state) => ({ filters: [...state.filters, filter] }));
+    set((state) => {
+      const filters = [...state.filters, filter];
+      persist(filters);
+      return { filters };
+    });
     return filter;
   },
   updateFilter: (id, patch) =>
-    set((state) => ({ filters: state.filters.map((f) => (f.id === id ? { ...f, ...patch } : f)) })),
-  removeFilter: (id) => set((state) => ({ filters: state.filters.filter((f) => f.id !== id) })),
+    set((state) => {
+      const filters = state.filters.map((f) => (f.id === id ? { ...f, ...patch } : f));
+      persist(filters);
+      return { filters };
+    }),
+  removeFilter: (id) =>
+    set((state) => {
+      const filters = state.filters.filter((f) => f.id !== id);
+      persist(filters);
+      return { filters };
+    }),
   toggleFilterActive: (id) =>
-    set((state) => ({ filters: state.filters.map((f) => (f.id === id ? { ...f, active: !f.active } : f)) })),
+    set((state) => {
+      const filters = state.filters.map((f) => (f.id === id ? { ...f, active: !f.active } : f));
+      persist(filters);
+      return { filters };
+    }),
   toggleFiltersEnabled: () => set((state) => ({ filtersEnabled: !state.filtersEnabled })),
   toggleQuickLevel: (level) =>
     set((state) => {
@@ -71,7 +95,10 @@ export const useFilterStore = create<FilterState>((set) => ({
   setSearchQuery: (query) => set({ searchQuery: query }),
   setSearchRegex: (value) => set({ searchRegex: value }),
   setSearchCaseSensitive: (value) => set({ searchCaseSensitive: value }),
-  loadFilters: (filters) => set({ filters })
+  loadFilters: (filters) => {
+    persist(filters);
+    set({ filters });
+  }
 }));
 
 export const ALL_LOG_LEVELS = LOG_LEVELS;

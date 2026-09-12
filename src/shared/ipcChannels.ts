@@ -6,7 +6,6 @@ import type {
   AppSettings,
   Device,
   ExploreEntry,
-  ExportOptions,
   LogEntry,
   ProjectFile
 } from './types';
@@ -27,8 +26,8 @@ export const IpcChannels = {
   FileOpenProjectDialog: 'file:open-project-dialog',
   FileSaveProjectDialog: 'file:save-project-dialog',
   FileSaveProject: 'file:save-project',
-  ExportShowSaveDialog: 'export:show-save-dialog',
-  ExportRun: 'export:run',
+  FileSaveLogDialog: 'file:save-log-dialog',
+  FileSaveLog: 'file:save-log',
   ClipboardWriteText: 'clipboard:write-text',
   FsListRoots: 'fs:list-roots',
   FsListChildren: 'fs:list-children',
@@ -45,14 +44,14 @@ export interface CaptureStartPayload {
   serial: string;
 }
 
-export interface ExportRunPayload {
-  options: ExportOptions;
-  entries: LogEntry[];
-}
-
 export interface SaveProjectPayload {
   path: string;
   project: ProjectFile;
+}
+
+export interface SaveLogPayload {
+  path: string;
+  entries: LogEntry[];
 }
 
 // Typed surface exposed on `window.api` by the preload script.
@@ -77,7 +76,9 @@ export interface RendererApi {
     set: (patch: Partial<AppSettings>) => Promise<AppSettings>;
   };
   files: {
-    openLogDialog: () => Promise<{ path: string; entries: LogEntry[] } | null>;
+    /** Multi-select — the picker allows choosing several log files at once,
+     *  which are merged into a single chronologically-sorted timeline. */
+    openLogDialog: () => Promise<{ paths: string[]; entries: LogEntry[] } | null>;
     /** Reads and parses a log file whose path is already known (e.g. a
      *  double-click in the Explore tab) — no native picker involved. Resolves
      *  null if the file can't be read (deleted, permissions, ...). */
@@ -85,10 +86,8 @@ export interface RendererApi {
     openProjectDialog: () => Promise<ProjectFile | null>;
     saveProjectDialog: (defaultName: string) => Promise<string | null>;
     saveProject: (path: string, project: ProjectFile) => Promise<void>;
-  };
-  export: {
-    showSaveDialog: (suggestedName: string, format: string) => Promise<string | null>;
-    run: (options: ExportOptions, entries: LogEntry[]) => Promise<void>;
+    saveLogDialog: (defaultName: string) => Promise<string | null>;
+    saveLogFile: (path: string, entries: LogEntry[]) => Promise<void>;
   };
   clipboard: {
     /** Uses Electron's native clipboard module (main process) rather than the

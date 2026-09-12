@@ -67,17 +67,6 @@ export interface Device {
 
 export type CaptureState = 'idle' | 'starting' | 'capturing' | 'paused' | 'reconnecting' | 'error';
 
-export type ExportFormat = 'text' | 'json' | 'csv' | 'raw' | 'html';
-export type ExportScope = 'all' | 'filtered' | 'marked';
-
-export interface ExportOptions {
-  format: ExportFormat;
-  scope: ExportScope;
-  includeHeaders: boolean;
-  onlyVisibleColumns: boolean;
-  destinationPath: string;
-}
-
 export interface ProjectFile {
   name: string;
   createdAt: string;
@@ -147,6 +136,10 @@ export interface AppSettings {
   recentProjectPaths: string[];
   autoscroll: boolean;
   table: TableSettings;
+  /** The working filter set, persisted so it survives an app restart. `null` means
+   *  "never customized yet" — the app falls back to its built-in starter filters
+   *  instead of hydrating an empty list (see filterStore.ts). */
+  filters: Filter[] | null;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -156,7 +149,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   recentDeviceSerials: [],
   recentProjectPaths: [],
   autoscroll: true,
-  table: DEFAULT_TABLE_SETTINGS
+  table: DEFAULT_TABLE_SETTINGS,
+  filters: null
 };
 
 export const LOG_LEVELS: LogLevel[] = ['V', 'D', 'I', 'W', 'E', 'F'];

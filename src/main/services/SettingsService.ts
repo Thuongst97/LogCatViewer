@@ -20,7 +20,8 @@ export class SettingsService {
       recentDeviceSerials: this.store.get('recentDeviceSerials'),
       recentProjectPaths: this.store.get('recentProjectPaths'),
       autoscroll: this.store.get('autoscroll'),
-      table: this.store.get('table')
+      table: this.store.get('table'),
+      filters: this.store.get('filters')
     };
   }
 

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { ThemePreference } from '@shared/types';
 
-export type DialogKind = 'filterEditor' | 'export' | 'deviceSelector' | 'settings' | 'logDetail' | null;
+export type DialogKind = 'filterEditor' | 'deviceSelector' | 'settings' | 'logDetail' | null;
 export type EffectiveTheme = 'light' | 'dark';
 
 export const SEARCH_RESULTS_MIN_HEIGHT = 80;
@@ -11,7 +11,7 @@ export const SEARCH_RESULTS_HEADER_HEIGHT = 29;
 
 export const SIDEBAR_MIN_WIDTH = 200;
 export const SIDEBAR_MAX_WIDTH = 560;
-export const SIDEBAR_DEFAULT_WIDTH = 280;
+export const SIDEBAR_DEFAULT_WIDTH = 240;
 
 interface UiState {
   themePreference: ThemePreference;
@@ -37,7 +37,6 @@ interface UiState {
   expandSearchResults: () => void;
   setSearchResultsHeight: (height: number) => void;
   openFilterEditor: (filterId: string | null) => void;
-  openExportDialog: () => void;
   openDeviceSelector: () => void;
   openSettingsDialog: () => void;
   openLogDetailDialog: () => void;
@@ -65,7 +64,6 @@ export const useUiStore = create<UiState>((set) => ({
   setSearchResultsHeight: (height) =>
     set({ searchResultsHeight: Math.min(SEARCH_RESULTS_MAX_HEIGHT, Math.max(SEARCH_RESULTS_MIN_HEIGHT, height)) }),
   openFilterEditor: (filterId) => set({ activeDialog: 'filterEditor', editingFilterId: filterId }),
-  openExportDialog: () => set({ activeDialog: 'export' }),
   openDeviceSelector: () => set({ activeDialog: 'deviceSelector' }),
   openSettingsDialog: () => set({ activeDialog: 'settings' }),
   openLogDetailDialog: () => set({ activeDialog: 'logDetail' }),

@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { IpcChannels } from '@shared/ipcChannels';
 import type { RendererApi } from '@shared/ipcChannels';
-import type { AppSettings, Device, ExploreEntry, ExportOptions, LogEntry, ProjectFile } from '@shared/types';
+import type { AppSettings, Device, ExploreEntry, LogEntry, ProjectFile } from '@shared/types';
 
 /** Subscribes to a main->renderer event channel and returns an unsubscribe function. */
 function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
@@ -36,13 +36,9 @@ const api: RendererApi = {
     openProjectDialog: () => ipcRenderer.invoke(IpcChannels.FileOpenProjectDialog),
     saveProjectDialog: (defaultName: string) => ipcRenderer.invoke(IpcChannels.FileSaveProjectDialog, defaultName),
     saveProject: (path: string, project: ProjectFile) =>
-      ipcRenderer.invoke(IpcChannels.FileSaveProject, { path, project })
-  },
-  export: {
-    showSaveDialog: (suggestedName: string, format: string) =>
-      ipcRenderer.invoke(IpcChannels.ExportShowSaveDialog, suggestedName, format),
-    run: (options: ExportOptions, entries: LogEntry[]) =>
-      ipcRenderer.invoke(IpcChannels.ExportRun, { options, entries })
+      ipcRenderer.invoke(IpcChannels.FileSaveProject, { path, project }),
+    saveLogDialog: (defaultName: string) => ipcRenderer.invoke(IpcChannels.FileSaveLogDialog, defaultName),
+    saveLogFile: (path: string, entries: LogEntry[]) => ipcRenderer.invoke(IpcChannels.FileSaveLog, { path, entries })
   },
   clipboard: {
     writeText: (text: string) => ipcRenderer.invoke(IpcChannels.ClipboardWriteText, text)

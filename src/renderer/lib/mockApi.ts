@@ -139,11 +139,9 @@ export const mockApi: RendererApi = {
     openLogAtPath: async (path: string) => ({ path, entries: Array.from({ length: 12 }, () => makeEntry()) }),
     openProjectDialog: async () => null,
     saveProjectDialog: async () => null,
-    saveProject: async () => {}
-  },
-  export: {
-    showSaveDialog: async () => null,
-    run: async () => {}
+    saveProject: async () => {},
+    saveLogDialog: async () => null,
+    saveLogFile: async () => {}
   },
   clipboard: {
     // Best-effort in plain-browser preview mode — the real app routes this through

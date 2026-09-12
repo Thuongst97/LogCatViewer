@@ -19,8 +19,6 @@ export function buildApplicationMenu(getWindow: () => BrowserWindow | null): Men
         { label: 'Open Project…', click: () => withWindow(getWindow, (w) => send(w, 'file:open-project')) },
         { label: 'Save Project…', accelerator: 'CmdOrCtrl+Shift+S', click: () => withWindow(getWindow, (w) => send(w, 'file:save-project')) },
         { type: 'separator' },
-        { label: 'Export…', accelerator: 'CmdOrCtrl+E', click: () => withWindow(getWindow, (w) => send(w, 'file:export')) },
-        { type: 'separator' },
         { label: 'Settings…', accelerator: 'CmdOrCtrl+,', click: () => withWindow(getWindow, (w) => send(w, 'file:settings')) },
         { type: 'separator' },
         isMac ? { role: 'close' } : { role: 'quit' }

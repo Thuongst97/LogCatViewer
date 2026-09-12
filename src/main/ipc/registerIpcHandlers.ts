@@ -1,16 +1,14 @@
 import { ipcMain, clipboard, type BrowserWindow } from 'electron';
-import { IpcChannels, type ExportRunPayload, type SaveProjectPayload } from '@shared/ipcChannels';
+import { IpcChannels, type SaveLogPayload, type SaveProjectPayload } from '@shared/ipcChannels';
 import type { AppSettings, Device, ExploreEntry, LogEntry, ProjectFile } from '@shared/types';
 import { AdbService } from '../services/AdbService';
 import { FileService } from '../services/FileService';
-import { ExportService } from '../services/ExportService';
 import { SettingsService } from '../services/SettingsService';
 import { FileSystemService } from '../services/FileSystemService';
 
 export interface AppServices {
   adb: AdbService;
   files: FileService;
-  exportSvc: ExportService;
   settings: SettingsService;
   fs: FileSystemService;
 }
@@ -21,7 +19,7 @@ export interface AppServices {
  * forwarded to the renderer as one-way `send` messages.
  */
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null, services: AppServices): void {
-  const { adb, files, exportSvc, settings, fs } = services;
+  const { adb, files, settings, fs } = services;
 
   ipcMain.handle(IpcChannels.DevicesList, async (): Promise<Device[]> => {
     const cached = adb.getCachedDevices();
@@ -93,14 +91,14 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, servi
     await files.saveProject(payload.path, payload.project);
   });
 
-  ipcMain.handle(IpcChannels.ExportShowSaveDialog, async (_e, suggestedName: string, format: string) => {
+  ipcMain.handle(IpcChannels.FileSaveLogDialog, async (_e, defaultName: string): Promise<string | null> => {
     const window = getWindow();
     if (!window) return null;
-    return exportSvc.showSaveDialog(window, suggestedName, format as never);
+    return files.saveLogDialog(window, defaultName);
   });
 
-  ipcMain.handle(IpcChannels.ExportRun, async (_e, payload: ExportRunPayload): Promise<void> => {
-    await exportSvc.run(payload.options, payload.entries);
+  ipcMain.handle(IpcChannels.FileSaveLog, async (_e, payload: SaveLogPayload): Promise<void> => {
+    await files.saveLogFile(payload.path, payload.entries);
   });
 
   ipcMain.handle(IpcChannels.ClipboardWriteText, async (_e, text: string): Promise<void> => {

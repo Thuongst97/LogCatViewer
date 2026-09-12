@@ -2,7 +2,6 @@ import { app, BrowserWindow, Menu, nativeTheme, shell } from 'electron';
 import { join } from 'node:path';
 import { AdbService } from './services/AdbService';
 import { FileService } from './services/FileService';
-import { ExportService } from './services/ExportService';
 import { SettingsService } from './services/SettingsService';
 import { FileSystemService } from './services/FileSystemService';
 import { registerIpcHandlers } from './ipc/registerIpcHandlers';
@@ -14,7 +13,6 @@ let mainWindow: BrowserWindow | null = null;
 const settings = new SettingsService();
 const windowState = new WindowState();
 const fileService = new FileService();
-const exportService = new ExportService();
 const fileSystemService = new FileSystemService();
 let adbService: AdbService;
 
@@ -83,7 +81,6 @@ async function bootstrap(): Promise<void> {
   registerIpcHandlers(() => mainWindow, {
     adb: adbService,
     files: fileService,
-    exportSvc: exportService,
     settings,
     fs: fileSystemService
   });
