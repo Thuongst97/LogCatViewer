@@ -1,7 +1,7 @@
 // Full-buffer search, off the main thread — see IMPLEMENTATION_PLAN.md §8.6/§10.
 // The main thread posts the *entire current buffer* plus a query; a large
 // regex scan here never blocks scrolling or incoming log rendering.
-import { searchMatches } from '../lib/filterEngine';
+import { searchMatches } from '@shared/filterEngine';
 import type { LogEntry } from '@shared/types';
 
 export interface SearchWorkerRequest {

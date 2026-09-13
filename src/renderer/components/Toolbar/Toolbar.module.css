@@ -1,5 +1,5 @@
 .toolbar {
-  height: 52px;
+  height: 44px;
   flex-shrink: 0;
   background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
@@ -17,8 +17,8 @@
   gap: 8px;
 }
 .logoMark {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 6px;
   background: linear-gradient(135deg, #2f6fb8, #1c4a80);
   display: flex;

@@ -12,13 +12,19 @@ import { computeTableLayout } from '../../lib/tableLayout';
 import { renderLogCell } from '../../lib/renderLogCell';
 import { COLUMN_LABELS, type LogEntry } from '@shared/types';
 
+// Not a per-keystroke debounce (search only runs on explicit submit — see
+// filterStore.submitSearchQuery) — this just coalesces a burst of live-capture
+// batches into one re-search of an *already-submitted* query instead of
+// re-running on every ~40ms batch tick while new matching lines stream in.
 const DEBOUNCE_MS = 150;
 
 /**
  * Full-buffer search results, independent of the currently applied filters —
  * mirrors DLT Viewer's persistent bottom search panel. Runs against the
  * *entire* buffer (not just the filtered view) in a Web Worker so a large
- * regex scan never blocks the table (plan §8.6 / §10).
+ * regex scan never blocks the table (plan §8.6 / §10). Triggered only by an
+ * explicit submit, not by typing — posting a million-entry buffer to the
+ * worker on every keystroke is what made typing feel laggy on a large log.
  */
 export function SearchResultsDock() {
   const visible = useUiStore((s) => s.searchResultsVisible);
@@ -28,11 +34,18 @@ export function SearchResultsDock() {
   const entries = useLogStore((s) => s.entries);
   const select = useLogStore((s) => s.select);
   const goToEntry = useLogStore((s) => s.goToEntry);
-  const query = useFilterStore((s) => s.searchQuery);
+  // The dock searches and reports on the *submitted* query (Enter / search
+  // icon), not the raw input value — see filterStore.submitSearchQuery for
+  // why re-searching a huge buffer on every keystroke is what caused the lag.
+  const query = useFilterStore((s) => s.submittedSearchQuery);
   const regex = useFilterStore((s) => s.searchRegex);
   const caseSensitive = useFilterStore((s) => s.searchCaseSensitive);
   const { search } = useSearchWorker();
   const [results, setResults] = useState<LogEntry[]>([]);
+  // A submitted search over a huge buffer (cloning it across to the worker,
+  // then scanning it) can take a perceptible moment — shown so a submit
+  // doesn't look like it did nothing until the results suddenly appear.
+  const [searching, setSearching] = useState(false);
   const [dragging, setDragging] = useState(false);
   const columns = useTableSettingsStore((s) => s.columns);
   const columnWidths = useTableSettingsStore((s) => s.columnWidths);
@@ -52,15 +65,23 @@ export function SearchResultsDock() {
   });
 
   useEffect(() => {
+    if (query.length === 0) {
+      setResults([]);
+      setSearching(false);
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
     const handle = setTimeout(async () => {
-      if (query.length === 0) {
-        setResults([]);
-        return;
-      }
       const matches = await search(entries, query, regex, caseSensitive);
+      if (cancelled) return; // a newer search superseded this one
       setResults(matches);
+      setSearching(false);
     }, DEBOUNCE_MS);
-    return () => clearTimeout(handle);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entries, query, regex, caseSensitive]);
 
@@ -112,7 +133,11 @@ export function SearchResultsDock() {
         <SearchIcon size={13} color="var(--text-secondary)" />
         <span className={styles.title}>Search Results</span>
         <span className={styles.count}>
-          {query.length === 0 ? 'Type a query above to search the full buffer' : `${results.length} match${results.length === 1 ? '' : 'es'} for “${query}”`}
+          {query.length === 0
+            ? 'Type a query above, then press Enter to search the full buffer'
+            : searching
+              ? `Searching for “${query}”…`
+              : `${results.length} match${results.length === 1 ? '' : 'es'} for “${query}”`}
         </span>
         <div className={styles.spacer} />
         {visible ? <ChevronDownIcon size={13} color="var(--text-muted)" /> : <ChevronUpIcon size={13} color="var(--text-muted)" />}
@@ -130,7 +155,7 @@ export function SearchResultsDock() {
 
           <div ref={bodyRef} className={[styles.body, 'mono'].join(' ')}>
             {results.length === 0 ? (
-              <div className={styles.empty}>{query.length === 0 ? 'No search in progress.' : 'No matches.'}</div>
+              <div className={styles.empty}>{query.length === 0 ? 'No search in progress.' : searching ? 'Searching…' : 'No matches.'}</div>
             ) : (
               <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
                 {virtualizer.getVirtualItems().map((virtualRow) => {

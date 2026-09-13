@@ -1,6 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
+    <!-- data-theme above starts at "light" (the app's default) so the very
+         first paint matches it before App.tsx's settings fetch resolves and
+         can override it — tokens.css's un-attributed :root falls back to
+         dark otherwise. -->
     <meta charset="UTF-8" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

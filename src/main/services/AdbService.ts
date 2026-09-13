@@ -24,8 +24,10 @@ export class AdbService extends EventEmitter {
   private adbPath: string;
 
   private trackProcess: ChildProcessWithoutNullStreams | null = null;
-  private trackBuffer = '';
-  private trackBlockLines: string[] | null = null;
+  private trackBuffer: Buffer = Buffer.alloc(0);
+  /** True if the most recently received raw chunk ended in an unresolved "\r"
+   *  whose pairing "\n" (or lack of one) hasn't arrived yet — see handleTrackChunk. */
+  private trackPendingCR = false;
   private devices: Device[] = [];
 
   private logProcess: ChildProcessWithoutNullStreams | null = null;
@@ -92,7 +94,7 @@ export class AdbService extends EventEmitter {
     const proc = spawn(this.adbPath, ['track-devices', '-l']);
     this.trackProcess = proc;
 
-    proc.stdout.on('data', (chunk: Buffer) => this.handleTrackChunk(chunk.toString('utf8')));
+    proc.stdout.on('data', (chunk: Buffer) => this.handleTrackChunk(chunk));
     proc.on('error', (err: Error) => {
       this.emit('captureError', `Device tracking failed to start: ${err.message}`);
     });
@@ -106,30 +108,67 @@ export class AdbService extends EventEmitter {
     this.trackProcess = null;
   }
 
-  private handleTrackChunk(chunk: string): void {
-    this.trackBuffer += chunk;
-    const lines = this.trackBuffer.split('\n');
-    this.trackBuffer = lines.pop() ?? '';
-    for (const rawLine of lines) {
-      const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
-      this.consumeTrackLine(line);
+  /**
+   * `adb track-devices -l` speaks the raw adb host protocol, not the plain-text
+   * format `adb devices -l` prints for a one-shot call: every device-list update
+   * arrives as a 4-ASCII-hex-digit byte length immediately followed by exactly
+   * that many bytes of device lines (one per device, no "List of devices
+   * attached" header, and no blank line separating one update from the next —
+   * the next update's length prefix starts right where this one's payload
+   * ends). A parser expecting the `adb devices -l` text shape never sees a
+   * frame boundary and silently never emits an update after the first snapshot
+   * — device connects/disconnects that happen while the app is running would
+   * never reach the renderer, leaving the toolbar's device indicator stuck at
+   * whatever it last showed.
+   *
+   * On Windows, adb.exe's own CRT stdio additionally rewrites every internal
+   * "\n" to "\r\n" on the way out, but the length prefix was computed against
+   * the original, un-translated bytes — so the raw bytes we receive run one
+   * byte longer per line than their declared length says, desyncing every
+   * frame after the first unless corrected. Normalizing CRLF -> LF before
+   * framing restores byte-for-byte alignment with those declared lengths
+   * (verified against a real captured `adb track-devices -l` session).
+   *
+   * A raw chunk can end in a lone "\r" whose pairing "\n" hasn't arrived yet
+   * (Node delivers pipe data in arbitrary-sized chunks, so this split can
+   * land anywhere). Normalizing eagerly here would either wrongly collapse it
+   * or wrongly leave it un-collapsed depending on what the *next* chunk turns
+   * out to start with — either way, wrong every other time. That trailing
+   * "\r" is held back (`trackPendingCR`) instead and re-prepended to the next
+   * chunk before normalizing again, so CRLF pairs split across chunk
+   * boundaries are still resolved correctly regardless of chunk size.
+   */
+  private handleTrackChunk(chunk: Buffer): void {
+    let raw = chunk;
+    if (this.trackPendingCR) {
+      raw = Buffer.concat([Buffer.from('\r', 'latin1'), raw]);
+      this.trackPendingCR = false;
     }
-  }
+    if (raw.length > 0 && raw[raw.length - 1] === 0x0d) {
+      this.trackPendingCR = true;
+      raw = raw.subarray(0, raw.length - 1);
+    }
+    const normalizedChunk = Buffer.from(raw.toString('latin1').replace(/\r\n/g, '\n'), 'latin1');
+    this.trackBuffer = Buffer.concat([this.trackBuffer, normalizedChunk]);
 
-  private consumeTrackLine(line: string): void {
-    if (line.startsWith('List of devices attached')) {
-      this.trackBlockLines = [];
-      return;
-    }
-    if (this.trackBlockLines === null) return;
-    if (line.trim().length === 0) {
-      const devices = this.trackBlockLines.map(parseDeviceLine);
-      this.trackBlockLines = null;
+    for (;;) {
+      if (this.trackBuffer.length < 4) return;
+      const length = parseInt(this.trackBuffer.subarray(0, 4).toString('ascii'), 16);
+      if (Number.isNaN(length)) {
+        this.trackBuffer = Buffer.alloc(0); // unexpected stream shape — drop rather than spin forever
+        return;
+      }
+      if (this.trackBuffer.length < 4 + length) return; // rest of this frame hasn't arrived yet
+      const payload = this.trackBuffer.subarray(4, 4 + length).toString('utf8');
+      this.trackBuffer = this.trackBuffer.subarray(4 + length);
+      const devices = payload
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0)
+        .map(parseDeviceLine);
       this.devices = devices;
       this.emit('devices', devices);
-      return;
     }
-    this.trackBlockLines.push(line);
   }
 
   getCachedDevices(): Device[] {

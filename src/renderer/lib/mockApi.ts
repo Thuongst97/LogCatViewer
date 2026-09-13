@@ -66,6 +66,7 @@ let paused = false;
 const logBatchListeners = new Set<(entries: LogEntry[]) => void>();
 const stateListeners = new Set<(state: string) => void>();
 const openProgressListeners = new Set<(progress: FileOpenProgressPayload) => void>();
+const openBatchListeners = new Set<(entries: LogEntry[]) => void>();
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -141,21 +142,26 @@ export const mockApi: RendererApi = {
   },
   files: {
     showOpenLogDialog: async () => null,
-    openLogPaths: async () => {
+    openLogPaths: async (_paths, _filterConfig) => {
       // Simulates a streamed, progressive file open — a handful of fake batches
-      // and progress ticks — through the same onLogBatch/onOpenProgress channels
-      // a live capture and the real preload's openLogPaths use.
+      // and progress ticks — through the same onOpenBatch/onOpenProgress channels
+      // the real preload's openLogPaths uses (kept separate from onLogBatch,
+      // matching the real IPC split — see FileOpenBatch in ipcChannels.ts).
       const totalBytes = 6_000_000;
       for (let i = 1; i <= 6; i++) {
         await wait(120);
         const batch = Array.from({ length: 12 }, () => makeEntry());
-        logBatchListeners.forEach((cb) => cb(batch));
+        openBatchListeners.forEach((cb) => cb(batch));
         openProgressListeners.forEach((cb) => cb({ processedBytes: i * 1_000_000, totalBytes }));
       }
     },
     onOpenProgress: (cb) => {
       openProgressListeners.add(cb);
       return () => openProgressListeners.delete(cb);
+    },
+    onOpenBatch: (cb) => {
+      openBatchListeners.add(cb);
+      return () => openBatchListeners.delete(cb);
     },
     openProjectDialog: async () => null,
     saveProjectDialog: async () => null,

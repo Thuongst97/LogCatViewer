@@ -10,6 +10,7 @@ import { levelColorVar } from '../../lib/levelColors';
 export function SearchBar() {
   const searchQuery = useFilterStore((s) => s.searchQuery);
   const setSearchQuery = useFilterStore((s) => s.setSearchQuery);
+  const submitSearchQuery = useFilterStore((s) => s.submitSearchQuery);
   const searchRegex = useFilterStore((s) => s.searchRegex);
   const setSearchRegex = useFilterStore((s) => s.setSearchRegex);
   const searchCaseSensitive = useFilterStore((s) => s.searchCaseSensitive);
@@ -22,10 +23,15 @@ export function SearchBar() {
   const { visible } = useVisibleEntries();
   const expandSearchResults = useUiStore((s) => s.expandSearchResults);
 
-  // The Search Results dock starts collapsed — submitting a search (Enter, or
-  // clicking the search icon) is what expands it, not merely typing a query.
+  // A full-buffer search can mean cloning a million entries across to the
+  // search worker — running that on every keystroke is what made typing feel
+  // laggy on a large log, so it only runs on an explicit submit (Enter, or
+  // clicking the search icon), which is also what expands the dock.
   function submitSearch() {
-    if (searchQuery.length > 0) expandSearchResults();
+    if (searchQuery.length > 0) {
+      expandSearchResults();
+      submitSearchQuery();
+    }
   }
 
   return (
@@ -83,7 +89,7 @@ export function SearchBar() {
       <span className={[styles.lineCounters, 'mono'].join(' ')}>
         {totalLines.toLocaleString()} lines total
         <span className={styles.lineCountersDot}>&bull;</span>
-        <span style={{ color: 'var(--text-secondary)' }}>{visible.length.toLocaleString()} shown (filtered)</span>
+        <span style={{ color: 'var(--text-secondary)' }}>{visible.length.toLocaleString()} filtered</span>
       </span>
 
       <Chip active={autoscroll} onClick={() => setAutoscroll(!autoscroll)} style={{ height: 26, padding: '0 10px', gap: 6, fontWeight: 500 }}>

@@ -1,6 +1,7 @@
 import styles from './Toolbar.module.css';
 import { Button } from '../common/ui';
 import {
+  FilterPositiveIcon,
   FolderOpenIcon,
   GearIcon,
   PauseIcon,
@@ -16,7 +17,7 @@ import { useDeviceStore, useSelectedDevice } from '../../state/deviceStore';
 import { useLogStore } from '../../state/logStore';
 import { useUiStore } from '../../state/uiStore';
 import { saveLogAsFile } from '../../lib/saveLog';
-import { openLogFilesWithProgress } from '../../lib/openLogFiles';
+import { openLogFilesWithProgress, currentFilterConfig } from '../../lib/openLogFiles';
 
 export function Toolbar() {
   const captureState = useDeviceStore((s) => s.captureState);
@@ -33,7 +34,10 @@ export function Toolbar() {
 
   const isCapturing = captureState === 'capturing';
   const isPaused = captureState === 'paused';
-  const canStart = !!selectedDevice && (captureState === 'idle' || captureState === 'error');
+  // selectedDevice can be a cached, offline "ghost" entry for a device that's
+  // dropped off adb's live list but is still selected (see useSelectedDevice)
+  // — Start must stay disabled for that until it actually reconnects.
+  const canStart = selectedDevice?.state === 'device' && (captureState === 'idle' || captureState === 'error');
   const canPause = isCapturing;
   const canStop = isCapturing || isPaused || captureState === 'reconnecting';
 
@@ -84,6 +88,17 @@ export function Toolbar() {
     }
   }
 
+  async function handleOpenWithFilter() {
+    const paths = await window.api.files.showOpenLogDialog();
+    if (!paths) return;
+    clearLog();
+    try {
+      await openLogFilesWithProgress(paths, currentFilterConfig());
+    } catch (err) {
+      window.alert(`Could not open the selected file — ${err instanceof Error ? err.message : 'it may be unreadable.'}`);
+    }
+  }
+
   async function handleSaveLog() {
     await saveLogAsFile(entries);
   }
@@ -97,7 +112,15 @@ export function Toolbar() {
         <span className={styles.brandTitle}>LogCat Viewer</span>
       </div>
 
-      <Button onClick={toggleSidebar} variant={sidebarVisible ? 'active' : 'plain'} title={sidebarVisible ? 'Hide sidebar' : 'Show sidebar'} style={{ padding: 6 }}>
+      <Button
+        onClick={toggleSidebar}
+        variant={sidebarVisible ? 'active' : 'plain'}
+        title={sidebarVisible ? 'Hide sidebar' : 'Show sidebar'}
+        // Nudged right so the divider right after this button lines up with the
+        // sidebar's own right border at its default width — purely a visual
+        // alignment tweak, not tied to the (resizable) sidebar width live.
+        style={{ padding: 6, marginLeft: 13 }}
+      >
         <SidebarIcon size={16} />
       </Button>
 
@@ -132,6 +155,14 @@ export function Toolbar() {
       <Button onClick={handleOpen} disabled={opening} title="Open a saved log file">
         <FolderOpenIcon size={15} />
         {opening ? `Opening… ${fileOpenProgress}%` : 'Open'}
+      </Button>
+      <Button
+        onClick={handleOpenWithFilter}
+        disabled={opening}
+        title="Open a log file, keeping only lines that match your current filters — a much higher size limit than Open"
+      >
+        <FilterPositiveIcon size={14} />
+        Open With Filter
       </Button>
       <Button onClick={handleSaveLog} disabled={entries.length === 0} title="Save the captured log to a .log file">
         <SaveIcon size={15} />

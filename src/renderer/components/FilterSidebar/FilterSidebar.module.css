@@ -92,6 +92,14 @@
   min-height: 0;
   overflow-y: auto;
 }
+/* Narrower than the app-wide 14px scrollbar (global.css), matching the Explore
+   tree's — this sidebar is too narrow for the full-width bar. */
+.filterList::-webkit-scrollbar {
+  width: 8px;
+}
+.filterList::-webkit-scrollbar-thumb {
+  min-height: 24px;
+}
 .filterRow {
   display: flex;
   align-items: center;

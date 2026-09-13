@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { IpcChannels } from '@shared/ipcChannels';
-import type { FileOpenProgressPayload, RendererApi } from '@shared/ipcChannels';
+import type { FileOpenProgressPayload, OpenLogFilterConfig, RendererApi } from '@shared/ipcChannels';
 import type { AppSettings, Device, ExploreEntry, LogEntry, ProjectFile } from '@shared/types';
 
 /** Subscribes to a main->renderer event channel and returns an unsubscribe function. */
@@ -32,8 +32,10 @@ const api: RendererApi = {
   },
   files: {
     showOpenLogDialog: () => ipcRenderer.invoke(IpcChannels.FileShowOpenLogDialog),
-    openLogPaths: (paths: string[]) => ipcRenderer.invoke(IpcChannels.FileOpenLogPaths, paths),
+    openLogPaths: (paths: string[], filterConfig?: OpenLogFilterConfig) =>
+      ipcRenderer.invoke(IpcChannels.FileOpenLogPaths, paths, filterConfig),
     onOpenProgress: (cb: (progress: FileOpenProgressPayload) => void) => subscribe(IpcChannels.FileOpenProgress, cb),
+    onOpenBatch: (cb: (entries: LogEntry[]) => void) => subscribe(IpcChannels.FileOpenBatch, cb),
     openProjectDialog: () => ipcRenderer.invoke(IpcChannels.FileOpenProjectDialog),
     saveProjectDialog: (defaultName: string) => ipcRenderer.invoke(IpcChannels.FileSaveProjectDialog, defaultName),
     saveProject: (path: string, project: ProjectFile) =>

@@ -11,7 +11,14 @@ interface FilterState {
    *  This is a view-level filter layered on top of saved Filters (plan §11) — it is
    *  never persisted as part of a Filter or a project file. */
   quickLevelExclusions: Set<LogLevel>;
+  /** Bound to the search input as the user types — never itself triggers a
+   *  search. See `submittedSearchQuery` for what actually drives one. */
   searchQuery: string;
+  /** The query the Search Results dock actually searches for — a full-buffer
+   *  scan can mean cloning a million entries across to the search worker, so
+   *  it only updates on an explicit submit (Enter / the search icon), not on
+   *  every keystroke — see `submitSearchQuery`. */
+  submittedSearchQuery: string;
   searchRegex: boolean;
   searchCaseSensitive: boolean;
 
@@ -23,6 +30,9 @@ interface FilterState {
   toggleFiltersEnabled: () => void;
   toggleQuickLevel: (level: LogLevel) => void;
   setSearchQuery: (query: string) => void;
+  /** Commits the current `searchQuery` as `submittedSearchQuery`, actually
+   *  running the search — call on Enter or the search icon. */
+  submitSearchQuery: () => void;
   setSearchRegex: (value: boolean) => void;
   setSearchCaseSensitive: (value: boolean) => void;
   loadFilters: (filters: Filter[]) => void;
@@ -55,6 +65,7 @@ export const useFilterStore = create<FilterState>((set) => ({
   filtersEnabled: false,
   quickLevelExclusions: new Set<LogLevel>(),
   searchQuery: '',
+  submittedSearchQuery: '',
   searchRegex: false,
   searchCaseSensitive: false,
 
@@ -99,7 +110,11 @@ export const useFilterStore = create<FilterState>((set) => ({
       else next.add(level);
       return { quickLevelExclusions: next };
     }),
-  setSearchQuery: (query) => set({ searchQuery: query }),
+  // Clearing the box back to empty is a reset, not a "still composing a query"
+  // state — drop the active search immediately rather than leaving stale
+  // results up until the next submit.
+  setSearchQuery: (query) => set({ searchQuery: query, ...(query.length === 0 ? { submittedSearchQuery: '' } : null) }),
+  submitSearchQuery: () => set((state) => ({ submittedSearchQuery: state.searchQuery })),
   setSearchRegex: (value) => set({ searchRegex: value }),
   setSearchCaseSensitive: (value) => set({ searchCaseSensitive: value }),
   loadFilters: (filters) => {

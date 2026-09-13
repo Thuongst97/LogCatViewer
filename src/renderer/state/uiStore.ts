@@ -11,7 +11,7 @@ export const SEARCH_RESULTS_HEADER_HEIGHT = 29;
 
 export const SIDEBAR_MIN_WIDTH = 200;
 export const SIDEBAR_MAX_WIDTH = 560;
-export const SIDEBAR_DEFAULT_WIDTH = 240;
+export const SIDEBAR_DEFAULT_WIDTH = 210;
 
 interface UiState {
   themePreference: ThemePreference;

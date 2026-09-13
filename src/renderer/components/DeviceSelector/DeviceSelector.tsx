@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import styles from './DeviceSelector.module.css';
 import { CheckIcon, ChevronDownIcon, PhoneIcon, RefreshIcon, SearchIcon } from '../../lib/icons';
-import { useDeviceStore } from '../../state/deviceStore';
+import { useDeviceStore, useSelectedDevice } from '../../state/deviceStore';
 import type { Device } from '@shared/types';
 
 /** Toolbar trigger + anchored popover for picking the active ADB device (mirrors DeviceSelector.dc.html). */
@@ -13,7 +13,10 @@ export function DeviceSelectorControl() {
   const selectedSerial = useDeviceStore((s) => s.selectedSerial);
   const selectDevice = useDeviceStore((s) => s.selectDevice);
   const setDevices = useDeviceStore((s) => s.setDevices);
-  const selected = devices.find((d) => d.serial === selectedSerial) ?? null;
+  // Falls back to last-known info (shown offline) when the selected device has
+  // dropped out of adb's live list — see useSelectedDevice for why, instead of
+  // just deriving from the current `devices` array like the dropdown list does.
+  const selected = useSelectedDevice();
 
   useEffect(() => {
     function onOutsideClick(e: MouseEvent) {

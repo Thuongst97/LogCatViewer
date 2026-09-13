@@ -15,11 +15,12 @@ import { useUiStore, applyThemeToDocument, type EffectiveTheme } from './state/u
 import { getSystemTheme } from './lib/theme';
 import { saveLogAsFile } from './lib/saveLog';
 import { openProjectFile, saveProjectFile } from './lib/projectFile';
-import { openLogFilesWithProgress } from './lib/openLogFiles';
+import { openLogFilesWithProgress, currentFilterConfig } from './lib/openLogFiles';
 import type { AppSettings, ThemePreference } from '@shared/types';
 
 export default function App() {
   const appendBatch = useLogStore((s) => s.appendBatch);
+  const appendUnboundedBatch = useLogStore((s) => s.appendUnboundedBatch);
   const clearLog = useLogStore((s) => s.clear);
   const setDevices = useDeviceStore((s) => s.setDevices);
   const setCaptureState = useDeviceStore((s) => s.setCaptureState);
@@ -53,15 +54,20 @@ export default function App() {
   useEffect(() => {
     const offDevices = window.api.devices.onChanged(setDevices);
     const offBatch = window.api.capture.onLogBatch(appendBatch);
+    // File-open batches arrive on their own channel and append without ever
+    // trimming — see logStore's appendUnboundedBatch for why this must stay
+    // structurally separate from the live-capture path above.
+    const offOpenBatch = window.api.files.onOpenBatch(appendUnboundedBatch);
     const offState = window.api.capture.onStateChanged((state) => setCaptureState(state as never));
     const offError = window.api.capture.onError((message) => setError(message));
     return () => {
       offDevices();
       offBatch();
+      offOpenBatch();
       offState();
       offError();
     };
-  }, [appendBatch, setDevices, setCaptureState, setError]);
+  }, [appendBatch, appendUnboundedBatch, setDevices, setCaptureState, setError]);
 
   // Application-menu commands (see main/menu.ts + preload's menuEvents bridge).
   useEffect(() => {
@@ -98,6 +104,15 @@ export default function App() {
             if (!paths) return;
             clearLog();
             openLogFilesWithProgress(paths).catch((err: Error) => {
+              window.alert(`Could not open the selected file — ${err.message || 'it may be unreadable.'}`);
+            });
+          });
+          break;
+        case 'file:open-log-filtered':
+          window.api.files.showOpenLogDialog().then((paths) => {
+            if (!paths) return;
+            clearLog();
+            openLogFilesWithProgress(paths, currentFilterConfig()).catch((err: Error) => {
               window.alert(`Could not open the selected file — ${err.message || 'it may be unreadable.'}`);
             });
           });

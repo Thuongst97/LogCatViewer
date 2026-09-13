@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileFilters, searchMatches } from '../../src/renderer/lib/filterEngine';
+import { compileFilters, searchMatches } from '../../src/shared/filterEngine';
 import { createEmptyFilter, type LogEntry } from '../../src/shared/types';
 
 function entry(overrides: Partial<LogEntry> = {}): LogEntry {

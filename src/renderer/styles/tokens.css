@@ -24,9 +24,14 @@
 /* ---------- Dark (default) ---------- */
 :root,
 :root[data-theme='dark'] {
+  /* --bg-app (log view) and --bg-panel (chrome: toolbar, sidebar, search bar,
+     table header) used to sit only ~4 RGB steps apart — visually flat, the
+     toolbar blended into the log view instead of reading as a separate
+     control surface. Same fix as the light theme's --bg-panel: give the
+     chrome a clearly distinct, simple step up from the content pane. */
   --bg-app: #1a1d23;
-  --bg-panel: #1e2127;
-  --bg-panel-alt: #23262d;
+  --bg-panel: #23262d;
+  --bg-panel-alt: #2b2f37;
   --bg-input: #181b20;
 
   --border: #2a2e35;

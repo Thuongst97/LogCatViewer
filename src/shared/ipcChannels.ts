@@ -6,7 +6,9 @@ import type {
   AppSettings,
   Device,
   ExploreEntry,
+  Filter,
   LogEntry,
+  LogLevel,
   ProjectFile
 } from './types';
 
@@ -38,7 +40,11 @@ export const IpcChannels = {
   LogBatch: 'log:batch',
   CaptureStateChanged: 'capture:state-changed',
   CaptureError: 'capture:error',
-  FileOpenProgress: 'file:open-progress'
+  FileOpenProgress: 'file:open-progress',
+  // Deliberately separate from LogBatch — see logStore's appendUnboundedBatch
+  // for why file-open batches must never share a channel/append-path with
+  // live-capture batches.
+  FileOpenBatch: 'file:open-batch'
 } as const;
 
 export interface CaptureStartPayload {
@@ -58,6 +64,18 @@ export interface SaveProjectPayload {
 export interface SaveLogPayload {
   path: string;
   entries: LogEntry[];
+}
+
+/** Passed to open a file with only lines matching the current filters kept in
+ *  memory — see FileService.openLogPaths and File > Open Log File with Filter….
+ *  Mirrors both layers useVisibleEntries applies live: the saved Filter list
+ *  (filters/filtersEnabled) and the search bar's quick per-level V/D/I/W/E/F
+ *  toggles (quickLevelExclusions) — a level excluded there is dropped here too,
+ *  independent of filtersEnabled, exactly like the live view. */
+export interface OpenLogFilterConfig {
+  filters: Filter[];
+  filtersEnabled: boolean;
+  quickLevelExclusions: LogLevel[];
 }
 
 // Typed surface exposed on `window.api` by the preload script.
@@ -90,14 +108,20 @@ export interface RendererApi {
      * `capture.onLogBatch` channel a live capture uses, instead of returning
      * one giant array — this is what keeps opening a 50MB+ file from freezing
      * the app: entries appear progressively as they're parsed. Resolves once
-     * every batch has been sent (or rejects if a file can't be read).
+     * every batch has been sent (or rejects if a file can't be read, or if
+     * `filterConfig` doesn't have a real active filter and the file(s) exceed
+     * the unfiltered size limit — see FileService.openLogPaths).
      * Works for a single known path too (e.g. a double-click in the Explore
      * tab) — just pass a one-element array.
      */
-    openLogPaths: (paths: string[]) => Promise<void>;
+    openLogPaths: (paths: string[], filterConfig?: OpenLogFilterConfig) => Promise<void>;
     /** Fires repeatedly while `openLogPaths` is running, so the UI can show a
      *  progress bar for a large file instead of just an indeterminate spinner. */
     onOpenProgress: (cb: (progress: FileOpenProgressPayload) => void) => () => void;
+    /** Delivers parsed entries from `openLogPaths` — separate from
+     *  `capture.onLogBatch` so a file open can never race with live-capture's
+     *  capacity/trim logic (see logStore's appendUnboundedBatch). */
+    onOpenBatch: (cb: (entries: LogEntry[]) => void) => () => void;
     openProjectDialog: () => Promise<ProjectFile | null>;
     saveProjectDialog: (defaultName: string) => Promise<string | null>;
     saveProject: (path: string, project: ProjectFile) => Promise<void>;
