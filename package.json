@@ -1,9 +1,9 @@
 {
   "name": "logcat-viewer",
-  "version": "0.1.0",
-  "description": "A desktop viewer for Android logcat, with DLT-Viewer-style filtering, search, and export.",
+  "version": "1.0.1",
+  "description": "Android Logcat Viewer",
   "main": "./out/main/index.js",
-  "author": "LogCat Viewer",
+  "author": "thuongst97",
   "license": "MIT",
   "private": true,
   "scripts": {

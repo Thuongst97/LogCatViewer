@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import styles from './FolderTree.module.css';
 import { ChevronDownIcon, ChevronRightIcon, FileTextIcon, FolderOpenIcon } from '../../lib/icons';
 import { useLogStore } from '../../state/logStore';
+import { openLogFilesWithProgress } from '../../lib/openLogFiles';
 import type { ExploreEntry } from '@shared/types';
 
 interface NodeState {
@@ -24,7 +25,6 @@ export function FolderTree() {
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
   const clearLog = useLogStore((s) => s.clear);
-  const appendBatch = useLogStore((s) => s.appendBatch);
 
   useEffect(() => {
     window.api.fs.listRoots().then(setRoots);
@@ -53,13 +53,12 @@ export function FolderTree() {
   }
 
   async function openLogFile(entry: ExploreEntry) {
-    const result = await window.api.files.openLogAtPath(entry.path);
-    if (!result) {
-      window.alert(`Could not open "${entry.name}" — it may have been moved, deleted, or is unreadable.`);
-      return;
-    }
     clearLog();
-    appendBatch(result.entries);
+    try {
+      await openLogFilesWithProgress([entry.path]);
+    } catch {
+      window.alert(`Could not open "${entry.name}" — it may have been moved, deleted, or is unreadable.`);
+    }
   }
 
   if (!roots) {

@@ -1,11 +1,26 @@
 import { dialog, type BrowserWindow } from 'electron';
-import { readFile, writeFile } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { readFile, stat, writeFile } from 'node:fs/promises';
 import type { LogEntry, ProjectFile } from '@shared/types';
 import { LogParser } from './LogParser';
 
+// Reading and regex-parsing a large log file (50MB+, hundreds of thousands of
+// lines) in one synchronous pass used to block the main process's single JS
+// thread for seconds at a time — no IPC, no window repaint, nothing else could
+// run, which is exactly what makes an Electron app look "Not Responding".
+// Streaming the file in ~1MB chunks keeps every synchronous burst of parsing
+// short, and yielding after each one lets the event loop breathe between them.
+const STREAM_CHUNK_BYTES = 1 << 20;
+
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
 /** Native open/save dialogs and disk I/O for log files and project files. */
 export class FileService {
-  async openLogDialog(window: BrowserWindow): Promise<{ paths: string[]; entries: LogEntry[] } | null> {
+  /** Shows the native multi-select picker and returns the chosen paths — fast,
+   *  no parsing — so a cancelled dialog never disturbs whatever's already loaded. */
+  async showOpenLogDialog(window: BrowserWindow): Promise<string[] | null> {
     const result = await dialog.showOpenDialog(window, {
       title: 'Open Log File',
       filters: [
@@ -15,35 +30,86 @@ export class FileService {
       properties: ['openFile', 'multiSelections']
     });
     if (result.canceled || result.filePaths.length === 0) return null;
-    return this.openLogsAtPaths(result.filePaths);
+    return result.filePaths;
   }
 
-  /** Same read-and-parse as openLogDialog, but for a path already known (e.g. a
-   *  double-click in the Explore tab) — no picker involved. */
-  async openLogAtPath(path: string): Promise<{ path: string; entries: LogEntry[] }> {
-    return { path, entries: await this.parseLogFile(path) };
-  }
+  /**
+   * Parses one or more log files and hands entries to `emitBatch` progressively
+   * as they're ready, instead of returning one giant array once everything is
+   * done. A single file streams straight into the table batch by batch, the
+   * same way a live capture does, so lines start appearing immediately instead
+   * of the UI going quiet for however long the whole file takes.
+   *
+   * Several files must still be fully read before they can be merged into one
+   * chronological timeline (see the multi-file Open dialog), so those are read
+   * in parallel (each one chunked and non-blocking) and the merged, renumbered
+   * result is handed back in slices — not one multi-hundred-MB IPC message.
+   */
+  async openLogPaths(
+    paths: string[],
+    emitBatch: (entries: LogEntry[]) => void,
+    onProgress?: (processedBytes: number, totalBytes: number) => void
+  ): Promise<void> {
+    const sizes = await Promise.all(paths.map((path) => stat(path).then((s) => s.size)));
+    const totalBytes = sizes.reduce((a, b) => a + b, 0);
 
-  /** Reads and parses several log files at once (the Open dialog's multi-select —
-   *  e.g. a set of rotated logcat_*.log captures) and merges them into a single
-   *  chronologically-ordered timeline. Each file starts its own id sequence while
-   *  parsing, so ids are reassigned sequentially after the merge to stay unique. */
-  async openLogsAtPaths(paths: string[]): Promise<{ paths: string[]; entries: LogEntry[] }> {
-    const perFile = await Promise.all(paths.map((path) => this.parseLogFile(path)));
+    if (paths.length === 1) {
+      await this.streamFile(paths[0], emitBatch, (processed) => onProgress?.(processed, totalBytes));
+      return;
+    }
+
+    // Several files must still be fully read before they can be merged into one
+    // chronological timeline, so progress here tracks combined bytes read
+    // across all of them (each one is still chunked and non-blocking on its own).
+    const processedByFile = new Array(paths.length).fill(0);
+    const reportProgress = () => onProgress?.(processedByFile.reduce((a, b) => a + b, 0), totalBytes);
+
+    const perFile = await Promise.all(
+      paths.map((path, i) =>
+        this.readFileEntries(path, (processed) => {
+          processedByFile[i] = processed;
+          reportProgress();
+        })
+      )
+    );
     const merged = perFile.flat().sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
     merged.forEach((entry, index) => {
       entry.id = index + 1;
     });
-    return { paths, entries: merged };
+
+    const SLICE = 5000;
+    for (let i = 0; i < merged.length; i += SLICE) {
+      emitBatch(merged.slice(i, i + SLICE));
+      await yieldToEventLoop();
+    }
   }
 
-  private async parseLogFile(path: string): Promise<LogEntry[]> {
-    const content = await readFile(path, 'utf8');
+  private async readFileEntries(path: string, onProgress?: (processedBytes: number) => void): Promise<LogEntry[]> {
+    const entries: LogEntry[] = [];
+    await this.streamFile(path, (batch) => entries.push(...batch), onProgress);
+    return entries;
+  }
+
+  private async streamFile(
+    path: string,
+    emitBatch: (entries: LogEntry[]) => void,
+    onProgress?: (processedBytes: number) => void
+  ): Promise<void> {
     const parser = new LogParser(path, 1);
-    parser.feed(content);
+    const stream = createReadStream(path, { encoding: 'utf8', highWaterMark: STREAM_CHUNK_BYTES });
+    let processedBytes = 0;
+    for await (const chunk of stream) {
+      processedBytes += Buffer.byteLength(chunk as string, 'utf8');
+      onProgress?.(processedBytes);
+      parser.feed(chunk as string);
+      const batch = parser.drain();
+      if (batch.length > 0) emitBatch(batch);
+      await yieldToEventLoop();
+    }
     parser.feed('\n'); // ensure the last line is flushed even without a trailing newline
     parser.flushAll();
-    return parser.drain();
+    const rest = parser.drain();
+    if (rest.length > 0) emitBatch(rest);
   }
 
   async openProjectDialog(window: BrowserWindow): Promise<ProjectFile | null> {

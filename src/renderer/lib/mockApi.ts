@@ -4,7 +4,7 @@
 // without spawning a real adb process. Never bundled into the packaged app:
 // electron's preload script always provides the real `window.api` first.
 import { DEFAULT_SETTINGS, type AppSettings, type Device, type ExploreEntry, type LogEntry } from '@shared/types';
-import type { RendererApi } from '@shared/ipcChannels';
+import type { FileOpenProgressPayload, RendererApi } from '@shared/ipcChannels';
 
 // A tiny fake filesystem for previewing the Explore tab outside Electron — keyed
 // by parent path, matching the shape `fs:list-children` would resolve to. Mixes
@@ -65,6 +65,11 @@ let captureTimer: ReturnType<typeof setInterval> | null = null;
 let paused = false;
 const logBatchListeners = new Set<(entries: LogEntry[]) => void>();
 const stateListeners = new Set<(state: string) => void>();
+const openProgressListeners = new Set<(progress: FileOpenProgressPayload) => void>();
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 let settings: AppSettings = { ...DEFAULT_SETTINGS, theme: 'dark' };
 
 function makeEntry(): LogEntry {
@@ -135,8 +140,23 @@ export const mockApi: RendererApi = {
     }
   },
   files: {
-    openLogDialog: async () => null,
-    openLogAtPath: async (path: string) => ({ path, entries: Array.from({ length: 12 }, () => makeEntry()) }),
+    showOpenLogDialog: async () => null,
+    openLogPaths: async () => {
+      // Simulates a streamed, progressive file open — a handful of fake batches
+      // and progress ticks — through the same onLogBatch/onOpenProgress channels
+      // a live capture and the real preload's openLogPaths use.
+      const totalBytes = 6_000_000;
+      for (let i = 1; i <= 6; i++) {
+        await wait(120);
+        const batch = Array.from({ length: 12 }, () => makeEntry());
+        logBatchListeners.forEach((cb) => cb(batch));
+        openProgressListeners.forEach((cb) => cb({ processedBytes: i * 1_000_000, totalBytes }));
+      }
+    },
+    onOpenProgress: (cb) => {
+      openProgressListeners.add(cb);
+      return () => openProgressListeners.delete(cb);
+    },
     openProjectDialog: async () => null,
     saveProjectDialog: async () => null,
     saveProject: async () => {},

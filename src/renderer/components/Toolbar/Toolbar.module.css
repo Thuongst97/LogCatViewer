@@ -45,3 +45,17 @@
 .spacer {
   flex-grow: 1;
 }
+
+.progressTrack {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  overflow: hidden;
+}
+.progressFill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 120ms ease-out;
+}

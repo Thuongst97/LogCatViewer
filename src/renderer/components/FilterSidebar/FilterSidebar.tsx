@@ -159,7 +159,7 @@ export function FilterSidebar() {
             </button>
             <button className={styles.addBtn} onClick={saveProjectFile} title="Save the current filter set to a project file">
               <SaveIcon size={12} />
-              Save Filter
+              Save
             </button>
             <button className={styles.addBtn} onClick={() => openFilterEditor(null)}>
               <PlusIcon size={12} />

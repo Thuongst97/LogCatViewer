@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import styles from './SearchResultsDock.module.css';
 import tableStyles from '../LogTable/LogTable.module.css';
 import { ChevronDownIcon, ChevronUpIcon, SearchIcon } from '../../lib/icons';
@@ -35,7 +36,20 @@ export function SearchResultsDock() {
   const [dragging, setDragging] = useState(false);
   const columns = useTableSettingsStore((s) => s.columns);
   const columnWidths = useTableSettingsStore((s) => s.columnWidths);
+  const rowHeight = useTableSettingsStore((s) => s.rowHeight);
   const { visibleColumns, gridTemplate } = computeTableLayout({ columns, columnWidths });
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  // A massive log can easily produce thousands of matches (a common substring
+  // over a 500k-line buffer) — rendering every one as a real DOM row is what
+  // made expanding this dock lag. Virtualized the same way LogTable is: only
+  // the rows actually in view exist in the DOM, regardless of match count.
+  const virtualizer = useVirtualizer({
+    count: results.length,
+    getScrollElement: () => bodyRef.current,
+    estimateSize: () => rowHeight,
+    overscan: 20
+  });
 
   useEffect(() => {
     const handle = setTimeout(async () => {
@@ -114,26 +128,39 @@ export function SearchResultsDock() {
             ))}
           </div>
 
-          <div className={[styles.body, 'mono'].join(' ')}>
+          <div ref={bodyRef} className={[styles.body, 'mono'].join(' ')}>
             {results.length === 0 ? (
               <div className={styles.empty}>{query.length === 0 ? 'No search in progress.' : 'No matches.'}</div>
             ) : (
-              results.map((entry) => (
-                <div
-                  key={entry.id}
-                  className={tableStyles.row}
-                  style={{ gridTemplateColumns: gridTemplate }}
-                  onClick={() => select(entry.id)}
-                  onDoubleClick={() => goToEntry(entry.id)}
-                  title="Double-click to jump to this line in the main view"
-                >
-                  {visibleColumns.map((column) => (
-                    <div key={column} className={tableStyles.cell}>
-                      {renderLogCell(column, entry)}
+              <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+                {virtualizer.getVirtualItems().map((virtualRow) => {
+                  const entry = results[virtualRow.index];
+                  return (
+                    <div
+                      key={entry.id}
+                      className={tableStyles.row}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: virtualRow.size,
+                        transform: `translateY(${virtualRow.start}px)`,
+                        gridTemplateColumns: gridTemplate
+                      }}
+                      onClick={() => select(entry.id)}
+                      onDoubleClick={() => goToEntry(entry.id)}
+                      title="Double-click to jump to this line in the main view"
+                    >
+                      {visibleColumns.map((column) => (
+                        <div key={column} className={tableStyles.cell}>
+                          {renderLogCell(column, entry)}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              ))
+                  );
+                })}
+              </div>
             )}
           </div>
         </>

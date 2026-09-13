@@ -181,7 +181,7 @@ export function FilterEditorDialog() {
           Cancel
         </Button>
         <Button variant="fill" onClick={handleSave}>
-          Save Filter
+          Save
         </Button>
       </DialogFooter>
     </Modal>

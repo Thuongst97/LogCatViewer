@@ -16,6 +16,7 @@ import { useDeviceStore, useSelectedDevice } from '../../state/deviceStore';
 import { useLogStore } from '../../state/logStore';
 import { useUiStore } from '../../state/uiStore';
 import { saveLogAsFile } from '../../lib/saveLog';
+import { openLogFilesWithProgress } from '../../lib/openLogFiles';
 
 export function Toolbar() {
   const captureState = useDeviceStore((s) => s.captureState);
@@ -23,11 +24,12 @@ export function Toolbar() {
   const setCaptureState = useDeviceStore((s) => s.setCaptureState);
   const setError = useDeviceStore((s) => s.setError);
   const entries = useLogStore((s) => s.entries);
-  const appendBatch = useLogStore((s) => s.appendBatch);
   const clearLog = useLogStore((s) => s.clear);
   const sidebarVisible = useUiStore((s) => s.sidebarVisible);
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const openSettingsDialog = useUiStore((s) => s.openSettingsDialog);
+  const fileOpenProgress = useUiStore((s) => s.fileOpenProgress);
+  const opening = fileOpenProgress !== null;
 
   const isCapturing = captureState === 'capturing';
   const isPaused = captureState === 'paused';
@@ -72,10 +74,14 @@ export function Toolbar() {
   }
 
   async function handleOpen() {
-    const result = await window.api.files.openLogDialog();
-    if (!result) return;
+    const paths = await window.api.files.showOpenLogDialog();
+    if (!paths) return;
     clearLog();
-    appendBatch(result.entries);
+    try {
+      await openLogFilesWithProgress(paths);
+    } catch (err) {
+      window.alert(`Could not open the selected file — ${err instanceof Error ? err.message : 'it may be unreadable.'}`);
+    }
   }
 
   async function handleSaveLog() {
@@ -123,9 +129,9 @@ export function Toolbar() {
 
       <div className={styles.divider} />
 
-      <Button onClick={handleOpen} title="Open a saved log file">
+      <Button onClick={handleOpen} disabled={opening} title="Open a saved log file">
         <FolderOpenIcon size={15} />
-        Open
+        {opening ? `Opening… ${fileOpenProgress}%` : 'Open'}
       </Button>
       <Button onClick={handleSaveLog} disabled={entries.length === 0} title="Save the captured log to a .log file">
         <SaveIcon size={15} />
@@ -137,6 +143,12 @@ export function Toolbar() {
       <Button onClick={openSettingsDialog} title="Settings" style={{ padding: 6 }}>
         <GearIcon size={17} />
       </Button>
+
+      {opening && (
+        <div className={styles.progressTrack}>
+          <div className={styles.progressFill} style={{ width: `${fileOpenProgress}%` }} />
+        </div>
+      )}
     </div>
   );
 }

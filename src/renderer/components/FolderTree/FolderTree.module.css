@@ -3,6 +3,14 @@
   overflow-y: auto;
   padding: 6px 4px;
 }
+/* Narrower than the app-wide 14px scrollbar (global.css) — that width was sized
+   for the main log view; in this ~240px sidebar it crowds the folder names. */
+.tree::-webkit-scrollbar {
+  width: 8px;
+}
+.tree::-webkit-scrollbar-thumb {
+  min-height: 24px;
+}
 .row {
   display: flex;
   align-items: center;

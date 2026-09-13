@@ -15,6 +15,7 @@ import { useUiStore, applyThemeToDocument, type EffectiveTheme } from './state/u
 import { getSystemTheme } from './lib/theme';
 import { saveLogAsFile } from './lib/saveLog';
 import { openProjectFile, saveProjectFile } from './lib/projectFile';
+import { openLogFilesWithProgress } from './lib/openLogFiles';
 import type { AppSettings, ThemePreference } from '@shared/types';
 
 export default function App() {
@@ -93,10 +94,12 @@ export default function App() {
           openSettingsDialog();
           break;
         case 'file:open-log':
-          window.api.files.openLogDialog().then((result) => {
-            if (!result) return;
+          window.api.files.showOpenLogDialog().then((paths) => {
+            if (!paths) return;
             clearLog();
-            useLogStore.getState().appendBatch(result.entries);
+            openLogFilesWithProgress(paths).catch((err: Error) => {
+              window.alert(`Could not open the selected file — ${err.message || 'it may be unreadable.'}`);
+            });
           });
           break;
         case 'file:save-log':

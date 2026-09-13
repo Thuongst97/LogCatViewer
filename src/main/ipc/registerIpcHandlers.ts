@@ -1,6 +1,6 @@
 import { ipcMain, clipboard, type BrowserWindow } from 'electron';
 import { IpcChannels, type SaveLogPayload, type SaveProjectPayload } from '@shared/ipcChannels';
-import type { AppSettings, Device, ExploreEntry, LogEntry, ProjectFile } from '@shared/types';
+import type { AppSettings, Device, ExploreEntry, ProjectFile } from '@shared/types';
 import { AdbService } from '../services/AdbService';
 import { FileService } from '../services/FileService';
 import { SettingsService } from '../services/SettingsService';
@@ -59,18 +59,22 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, servi
     return updated;
   });
 
-  ipcMain.handle(IpcChannels.FileOpenLogDialog, async () => {
+  ipcMain.handle(IpcChannels.FileShowOpenLogDialog, async (): Promise<string[] | null> => {
     const window = getWindow();
     if (!window) return null;
-    return files.openLogDialog(window);
+    return files.showOpenLogDialog(window);
   });
 
-  ipcMain.handle(IpcChannels.FileOpenLogAtPath, async (_e, path: string): Promise<{ path: string; entries: LogEntry[] } | null> => {
-    try {
-      return await files.openLogAtPath(path);
-    } catch {
-      return null;
-    }
+  ipcMain.handle(IpcChannels.FileOpenLogPaths, async (_e, paths: string[]): Promise<void> => {
+    await files.openLogPaths(
+      paths,
+      (batch) => {
+        getWindow()?.webContents.send(IpcChannels.LogBatch, batch);
+      },
+      (processedBytes, totalBytes) => {
+        getWindow()?.webContents.send(IpcChannels.FileOpenProgress, { processedBytes, totalBytes });
+      }
+    );
   });
 
   ipcMain.handle(IpcChannels.FileOpenProjectDialog, async (): Promise<ProjectFile | null> => {

@@ -21,8 +21,8 @@ export const IpcChannels = {
   CaptureClearDeviceBuffer: 'capture:clear-device-buffer',
   SettingsGet: 'settings:get',
   SettingsSet: 'settings:set',
-  FileOpenLogDialog: 'file:open-log-dialog',
-  FileOpenLogAtPath: 'file:open-log-at-path',
+  FileShowOpenLogDialog: 'file:show-open-log-dialog',
+  FileOpenLogPaths: 'file:open-log-paths',
   FileOpenProjectDialog: 'file:open-project-dialog',
   FileSaveProjectDialog: 'file:save-project-dialog',
   FileSaveProject: 'file:save-project',
@@ -37,11 +37,17 @@ export const IpcChannels = {
   DevicesChanged: 'devices:changed',
   LogBatch: 'log:batch',
   CaptureStateChanged: 'capture:state-changed',
-  CaptureError: 'capture:error'
+  CaptureError: 'capture:error',
+  FileOpenProgress: 'file:open-progress'
 } as const;
 
 export interface CaptureStartPayload {
   serial: string;
+}
+
+export interface FileOpenProgressPayload {
+  processedBytes: number;
+  totalBytes: number;
 }
 
 export interface SaveProjectPayload {
@@ -76,13 +82,22 @@ export interface RendererApi {
     set: (patch: Partial<AppSettings>) => Promise<AppSettings>;
   };
   files: {
-    /** Multi-select — the picker allows choosing several log files at once,
-     *  which are merged into a single chronologically-sorted timeline. */
-    openLogDialog: () => Promise<{ paths: string[]; entries: LogEntry[] } | null>;
-    /** Reads and parses a log file whose path is already known (e.g. a
-     *  double-click in the Explore tab) — no native picker involved. Resolves
-     *  null if the file can't be read (deleted, permissions, ...). */
-    openLogAtPath: (path: string) => Promise<{ path: string; entries: LogEntry[] } | null>;
+    /** Shows the native multi-select picker and returns the chosen paths, or
+     *  null if cancelled — no parsing happens here. */
+    showOpenLogDialog: () => Promise<string[] | null>;
+    /**
+     * Parses the given log file(s) and streams their entries in via the same
+     * `capture.onLogBatch` channel a live capture uses, instead of returning
+     * one giant array — this is what keeps opening a 50MB+ file from freezing
+     * the app: entries appear progressively as they're parsed. Resolves once
+     * every batch has been sent (or rejects if a file can't be read).
+     * Works for a single known path too (e.g. a double-click in the Explore
+     * tab) — just pass a one-element array.
+     */
+    openLogPaths: (paths: string[]) => Promise<void>;
+    /** Fires repeatedly while `openLogPaths` is running, so the UI can show a
+     *  progress bar for a large file instead of just an indeterminate spinner. */
+    onOpenProgress: (cb: (progress: FileOpenProgressPayload) => void) => () => void;
     openProjectDialog: () => Promise<ProjectFile | null>;
     saveProjectDialog: (defaultName: string) => Promise<string | null>;
     saveProject: (path: string, project: ProjectFile) => Promise<void>;

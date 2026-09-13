@@ -26,6 +26,10 @@ interface UiState {
   searchResultsHeight: number;
   activeDialog: DialogKind;
   editingFilterId: string | null;
+  /** 0-100 while a file open is streaming in, null otherwise — read by the
+   *  Toolbar to show a progress bar regardless of which UI triggered the open
+   *  (toolbar button, File menu, or the Explore tab). */
+  fileOpenProgress: number | null;
 
   setThemePreference: (theme: ThemePreference) => void;
   setEffectiveTheme: (theme: EffectiveTheme) => void;
@@ -41,6 +45,7 @@ interface UiState {
   openSettingsDialog: () => void;
   openLogDetailDialog: () => void;
   closeDialog: () => void;
+  setFileOpenProgress: (percent: number | null) => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -54,6 +59,7 @@ export const useUiStore = create<UiState>((set) => ({
   searchResultsHeight: SEARCH_RESULTS_DEFAULT_HEIGHT,
   activeDialog: null,
   editingFilterId: null,
+  fileOpenProgress: null,
 
   setThemePreference: (theme) => set({ themePreference: theme }),
   setEffectiveTheme: (theme) => set({ effectiveTheme: theme }),
@@ -67,7 +73,8 @@ export const useUiStore = create<UiState>((set) => ({
   openDeviceSelector: () => set({ activeDialog: 'deviceSelector' }),
   openSettingsDialog: () => set({ activeDialog: 'settings' }),
   openLogDetailDialog: () => set({ activeDialog: 'logDetail' }),
-  closeDialog: () => set({ activeDialog: null, editingFilterId: null })
+  closeDialog: () => set({ activeDialog: null, editingFilterId: null }),
+  setFileOpenProgress: (percent) => set({ fileOpenProgress: percent })
 }));
 
 /** Applies the resolved theme to <html data-theme="...">. Call whenever effectiveTheme changes. */

@@ -146,10 +146,6 @@ function TableTab() {
           </div>
         </div>
       </div>
-
-      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-        Column widths are also adjustable by dragging a column border in the table header.
-      </span>
     </>
   );
 }
