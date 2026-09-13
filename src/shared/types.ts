@@ -97,12 +97,17 @@ export type ThemePreference = 'light' | 'dark' | 'system';
 /** The 7 columns the log table can show. `message` can't be hidden — it's the one
  *  column guaranteed to always carry content, so hiding everything is impossible. */
 export type ColumnKey = 'index' | 'time' | 'pid' | 'tid' | 'level' | 'tag' | 'message';
-/** Every column except `message` has a user-adjustable pixel width; `message` always
- *  fills whatever space is left (plan follow-up: "columns shall expand flexibly"). */
-export type ResizableColumnKey = Exclude<ColumnKey, 'message'>;
+/** Every column, including `message`, has a user-adjustable pixel width. For
+ *  `message` this is a *minimum*, not a fixed size (see tableLayout.ts's
+ *  `minmax(width, 1fr)`) — it still absorbs any spare room on a wide window
+ *  exactly like before, but won't shrink past this, so a narrow window (or
+ *  widening Message further than fits) makes the table overflow and scroll
+ *  horizontally instead of ellipsis-truncating a long line with no way to
+ *  read the rest — the table and Search Results, which shares this layout. */
+export type ResizableColumnKey = ColumnKey;
 
 export const COLUMN_ORDER: ColumnKey[] = ['index', 'time', 'pid', 'tid', 'level', 'tag', 'message'];
-export const RESIZABLE_COLUMNS: ResizableColumnKey[] = ['index', 'time', 'pid', 'tid', 'level', 'tag'];
+export const RESIZABLE_COLUMNS: ResizableColumnKey[] = ['index', 'time', 'pid', 'tid', 'level', 'tag', 'message'];
 
 export const COLUMN_LABELS: Record<ColumnKey, string> = {
   index: 'Index',
@@ -126,7 +131,7 @@ export interface TableSettings {
 
 export const DEFAULT_TABLE_SETTINGS: TableSettings = {
   columns: { index: true, time: true, pid: true, tid: true, level: true, tag: true, message: true },
-  columnWidths: { index: 60, time: 96, pid: 56, tid: 56, level: 60, tag: 150 },
+  columnWidths: { index: 60, time: 96, pid: 56, tid: 56, level: 60, tag: 150, message: 600 },
   fontSize: 12,
   rowHeight: 26
 };

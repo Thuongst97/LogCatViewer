@@ -57,7 +57,10 @@
 .body {
   flex-grow: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  /* A wide Message column (or a narrow window) can make the columns' combined
+     width exceed the viewport — scroll to the rest instead of clipping a long
+     line with no way to read it in place (mirrors LogTable's .scrollArea). */
+  overflow-x: auto;
   font-size: 11.5px;
 }
 .empty {

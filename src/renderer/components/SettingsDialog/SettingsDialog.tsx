@@ -129,12 +129,10 @@ function TableTab() {
               <Checkbox checked={columns[column]} onChange={(v) => setColumnVisible(column, v)} aria-label={`Show ${COLUMN_LABELS[column]}`} />
               <span className={styles.columnCheckLabel}>
                 Show {COLUMN_LABELS[column]}
-                {column !== 'message' && (
-                  <span style={{ color: 'var(--text-muted)' }} className="mono">
-                    {' '}
-                    ({columnWidths[column as Exclude<ColumnKey, 'message'>]}px)
-                  </span>
-                )}
+                <span style={{ color: 'var(--text-muted)' }} className="mono">
+                  {' '}
+                  ({columnWidths[column]}px)
+                </span>
               </span>
             </div>
           ))}
@@ -142,6 +140,10 @@ function TableTab() {
             <Checkbox checked disabled onChange={() => {}} aria-label="Show Message (always shown)" />
             <span className={[styles.columnCheckLabel, styles.columnCheckLabelLocked].join(' ')} title="Message always shows — hiding every column isn't useful">
               Show Message
+              <span style={{ color: 'var(--text-muted)' }} className="mono">
+                {' '}
+                ({columnWidths.message}px)
+              </span>
             </span>
           </div>
         </div>

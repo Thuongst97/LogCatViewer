@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import styles from './LogTable.module.css';
 import { useLogStore } from '../../state/logStore';
@@ -8,9 +8,10 @@ import { useTableSettingsStore } from '../../state/tableSettingsStore';
 import { useVisibleEntries } from '../../lib/useVisibleEntries';
 import { computeTableLayout } from '../../lib/tableLayout';
 import { renderLogCell } from '../../lib/renderLogCell';
+import { measureTextWidth } from '../../lib/measureTextWidth';
 import { copyToClipboard } from '../../lib/clipboard';
 import { CopyIcon, ExpandIcon, FilterPositiveIcon } from '../../lib/icons';
-import { COLUMN_LABELS, type ColumnKey, type LogEntry, type ResizableColumnKey } from '@shared/types';
+import { COLUMN_LABELS, type ColumnKey, type LogEntry } from '@shared/types';
 
 interface ContextMenuState {
   x: number;
@@ -23,8 +24,14 @@ const AUTOSCROLL_SLOP_MULTIPLIER = 2;
 /** The dense, virtualized log table — only visible rows exist in the DOM regardless of
  *  buffer size (plan §8.3), which is what keeps a 100k-line buffer scrolling smoothly.
  *  Columns, their widths, row height, and text size all come from tableSettingsStore
- *  (Settings > Table), and every fixed-width column is drag-resizable from its header
- *  cell's right edge — `message` always fills whatever space is left. */
+ *  (Settings > Table), and every column — Message included — is drag-resizable from
+ *  its header cell's right edge. The Message column's configured width is only a
+ *  *minimum*: it still fills spare room on a wide window, but the widest message
+ *  actually on screen is measured (canvas.measureText, see measureTextWidth) and
+ *  used as a floor too, so a long line always forces real horizontal overflow
+ *  instead of silently ellipsis-truncating with no way to read the rest. The
+ *  header scrolls in lockstep via a synced scrollLeft (handleScroll) so columns
+ *  stay aligned with their headers. */
 export function LogTable() {
   const entries = useLogStore((s) => s.entries);
   const selectedEntryId = useLogStore((s) => s.selectedEntryId);
@@ -44,13 +51,15 @@ export function LogTable() {
   const rowHeight = useTableSettingsStore((s) => s.rowHeight);
   const setColumnWidth = useTableSettingsStore((s) => s.setColumnWidth);
 
-  const { visibleColumns, gridTemplate } = useMemo(
-    () => computeTableLayout({ columns, columnWidths }),
-    [columns, columnWidths]
-  );
-
   const parentRef = useRef<HTMLDivElement>(null);
+  const headerScrollRef = useRef<HTMLDivElement>(null);
   const userScrolledUp = useRef(false);
+  // The body has a vertical scrollbar carving into its content width; the
+  // header doesn't, so without compensating for that gap the two drift out of
+  // alignment by a scrollbar's width at the far right edge of a horizontal
+  // scroll. Re-measured on any resize (window, sidebar toggle, row count
+  // crossing the point where the vertical scrollbar appears/disappears, …).
+  const [scrollbarWidth, setScrollbarWidth] = useState(0);
 
   const virtualizer = useVirtualizer({
     count: visible.length,
@@ -58,6 +67,34 @@ export function LogTable() {
     estimateSize: () => rowHeight,
     overscan: 20
   });
+
+  const font = `${fontSize}px 'IBM Plex Mono', ui-monospace, 'Cascadia Code', Consolas, monospace`;
+  const MESSAGE_CELL_PADDING = 28; // .cell's 4px+10px horizontal padding, plus a small safety margin
+  let widestMessage = 0;
+  if (columns.message) {
+    for (const virtualRow of virtualizer.getVirtualItems()) {
+      const entry = visible[virtualRow.index];
+      if (!entry) continue;
+      const width = measureTextWidth(entry.message, font);
+      if (width > widestMessage) widestMessage = width;
+    }
+  }
+  const effectiveColumnWidths =
+    widestMessage > 0
+      ? { ...columnWidths, message: Math.max(columnWidths.message, Math.ceil(widestMessage) + MESSAGE_CELL_PADDING) }
+      : columnWidths;
+
+  const { visibleColumns, gridTemplate, totalWidth } = computeTableLayout({ columns, columnWidths: effectiveColumnWidths });
+
+  useEffect(() => {
+    const el = parentRef.current;
+    if (!el) return;
+    const measure = () => setScrollbarWidth(el.offsetWidth - el.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [visible.length, rowHeight]);
 
   useEffect(() => {
     virtualizer.measure();
@@ -82,10 +119,6 @@ export function LogTable() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible.length]);
 
-  // Jump to a specific entry on request (e.g. a Search Results double-click — plan
-  // follow-up, mirrors DLT Viewer). Only takes effect if the entry is currently
-  // visible under the active filters; if it's filtered out there's nothing to
-  // scroll to, but it stays selected so opening the detail dialog still shows it.
   useEffect(() => {
     if (!scrollRequest) return;
     const index = visible.findIndex((e) => e.id === scrollRequest.id);
@@ -97,6 +130,11 @@ export function LogTable() {
   function handleScroll() {
     const el = parentRef.current;
     if (!el) return;
+    // headerScrollRef wraps the header row at viewport width with overflow-x:
+    // hidden (see .headerScroll) — its own content (the header row, sized to
+    // totalWidth) is what actually overflows, so *this* wrapper is what needs
+    // scrollLeft set to stay in lockstep; it never scrolls on its own.
+    if (headerScrollRef.current) headerScrollRef.current.scrollLeft = el.scrollLeft;
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     userScrolledUp.current = distanceFromBottom > rowHeight * AUTOSCROLL_SLOP_MULTIPLIER;
   }
@@ -108,11 +146,6 @@ export function LogTable() {
     openLogDetailDialog();
   }
 
-  // Right-click > Add Filter — pre-fills the New Filter dialog from this line
-  // instead of a blank form. Tag comes enabled (a tag filter is the pattern
-  // every filter in typical use ends up being); Message is filled in too but
-  // left disabled, since matching the *exact* text of one specific line is
-  // rarely what you want by default — it's there to enable if you do.
   function handleAddFilter(entry: LogEntry) {
     openFilterEditor(null, {
       name: entry.tag || undefined,
@@ -157,15 +190,20 @@ export function LogTable() {
 
   return (
     <div className={styles.tableArea}>
-      <div className={[styles.headerRow, 'mono'].join(' ')} style={{ gridTemplateColumns: gridTemplate }}>
-        {visibleColumns.map((column) => (
-          <HeaderCell
-            key={column}
-            column={column}
-            width={column === 'message' ? null : columnWidths[column as ResizableColumnKey]}
-            onResize={(width) => setColumnWidth(column as ResizableColumnKey, width)}
-          />
-        ))}
+      <div ref={headerScrollRef} className={styles.headerScroll} style={{ marginRight: scrollbarWidth }}>
+        <div
+          className={[styles.headerRow, 'mono'].join(' ')}
+          style={{ gridTemplateColumns: gridTemplate, width: '100%', minWidth: totalWidth }}
+        >
+          {visibleColumns.map((column) => (
+            <HeaderCell
+              key={column}
+              column={column}
+              width={columnWidths[column]}
+              onResize={(width) => setColumnWidth(column, width)}
+            />
+          ))}
+        </div>
       </div>
 
       <div ref={parentRef} className={styles.scrollArea} style={{ fontSize }} onScroll={handleScroll}>
@@ -178,7 +216,7 @@ export function LogTable() {
               : 'No lines match the current filters.'}
           </div>
         )}
-        <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+        <div style={{ height: virtualizer.getTotalSize(), width: '100%', minWidth: totalWidth, position: 'relative' }}>
           {virtualizer.getVirtualItems().map((virtualRow) => {
             const entry = visible[virtualRow.index];
             // Rows are deliberately flat by default — no automatic per-level tint, no
@@ -305,15 +343,13 @@ function HeaderCell({
   onResize
 }: {
   column: ColumnKey;
-  /** null for the flexible `message` column, which has no drag handle. */
-  width: number | null;
+  width: number;
   onResize: (width: number) => void;
 }) {
   const [dragging, setDragging] = useState(false);
   const dragStart = useRef<{ startX: number; startWidth: number } | null>(null);
 
   function handleMouseDown(e: ReactMouseEvent) {
-    if (width === null) return;
     e.preventDefault();
     dragStart.current = { startX: e.clientX, startWidth: width };
     setDragging(true);
@@ -348,13 +384,11 @@ function HeaderCell({
   return (
     <div className={styles.cell} style={{ position: 'relative' }}>
       {COLUMN_LABELS[column].toUpperCase()}
-      {width !== null && (
-        <div
-          className={[styles.columnResizeHandle, dragging ? styles.columnResizing : ''].join(' ')}
-          onMouseDown={handleMouseDown}
-          title="Drag to resize column"
-        />
-      )}
+      <div
+        className={[styles.columnResizeHandle, dragging ? styles.columnResizing : ''].join(' ')}
+        onMouseDown={handleMouseDown}
+        title="Drag to resize column"
+      />
     </div>
   );
 }

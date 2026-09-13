@@ -5,11 +5,21 @@
   min-width: 0;
   min-height: 0;
 }
+/* Clips the header row to the visible width and has no scrollbar of its own —
+   kept in horizontal lockstep with .scrollArea purely by mirroring its
+   scrollLeft (see LogTable.tsx's handleScroll). This wrapper is the actual
+   scroll container: it must stay viewport-width while its child (.headerRow)
+   is the one sized to the full column width, or there's nothing for it to
+   scroll past — setting scrollLeft directly on an element exactly as wide as
+   its own content is a no-op. */
+.headerScroll {
+  overflow-x: hidden;
+  flex-shrink: 0;
+}
 .headerRow {
   display: grid;
-  grid-template-columns: 60px 96px 56px 56px 60px 150px 1fr;
+  grid-template-columns: 60px 96px 56px 56px 60px 150px 600px;
   height: 28px;
-  flex-shrink: 0;
   background: var(--bg-panel-alt);
   /* Each .cell already draws its own bottom border (see .cell below) — bumped to
      --border-strong just for header cells so the header/body split reads clearly. */
@@ -24,13 +34,16 @@
 .scrollArea {
   flex-grow: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  /* A wide Message column (or a narrow window) can make the columns' combined
+     width exceed the viewport — scroll to the rest instead of clipping a long
+     line with no way to read it in place. */
+  overflow-x: auto;
   font-size: 12px;
   position: relative;
 }
 .row {
   display: grid;
-  grid-template-columns: 60px 96px 56px 56px 60px 150px 1fr;
+  grid-template-columns: 60px 96px 56px 56px 60px 150px 600px;
   cursor: pointer;
 }
 .row:hover {

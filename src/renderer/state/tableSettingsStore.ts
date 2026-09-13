@@ -12,7 +12,11 @@ import {
 } from '@shared/types';
 
 export const MIN_COLUMN_WIDTH = 32;
-export const MAX_COLUMN_WIDTH = 500;
+// Raised from 500 so Message — now a fixed, resizable column instead of an
+// auto-filling one (see ResizableColumnKey) — has room to widen well past a
+// short fixed-width column's range; the table scrolls horizontally past
+// whatever this is set to (see LogTable/SearchResultsDock).
+export const MAX_COLUMN_WIDTH = 1200;
 export const MIN_FONT_SIZE = 10;
 export const MAX_FONT_SIZE = 18;
 export const MIN_ROW_HEIGHT = 20;
@@ -40,7 +44,11 @@ function snapshot(state: TableSettingsState): TableSettings {
 export const useTableSettingsStore = create<TableSettingsState>((set, get) => ({
   ...DEFAULT_TABLE_SETTINGS,
 
-  hydrate: (settings) => set(settings),
+  // A settings file saved before `message` became a resizable column has no
+  // width for it — fall back to the default rather than hydrating `undefined`
+  // into columnWidths.message (every other saved field still wins as-is).
+  hydrate: (settings) =>
+    set({ ...settings, columnWidths: { ...DEFAULT_TABLE_SETTINGS.columnWidths, ...settings.columnWidths } }),
 
   setColumnVisible: (key, visible) => {
     // `message` is intentionally not exposed as toggleable in the UI, but guard here
