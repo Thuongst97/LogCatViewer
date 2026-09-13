@@ -109,7 +109,13 @@ function messageMatchesCompiled(compiled: CompiledFilter, entry: LogEntry): bool
     : haystack.includes(filter.message.value);
 }
 
-/** Plain text/regex search used by the search bar and the full-buffer search worker. */
+/**
+ * Plain text/regex search used by the search bar and the full-buffer search worker.
+ * In regex mode `|` already means alternation, same as any regex engine. In plain-text
+ * mode it's treated the same way as a convenience — `"WifiHAL|HDMI"` matches a line
+ * containing *either* keyword — a common log-tool convention (DLT Viewer and others)
+ * that saves switching into regex mode just for simple OR searches.
+ */
 export function searchMatches(entry: LogEntry, query: string, regex: boolean, ignoreCase: boolean): boolean {
   if (query.length === 0) return false;
   const haystack = `${entry.tag} ${entry.message} ${entry.continuation.join(' ')}`;
@@ -121,5 +127,11 @@ export function searchMatches(entry: LogEntry, query: string, regex: boolean, ig
       return false;
     }
   }
-  return ignoreCase ? haystack.toLowerCase().includes(query.toLowerCase()) : haystack.includes(query);
+  const compareHaystack = ignoreCase ? haystack.toLowerCase() : haystack;
+  const terms = query
+    .split('|')
+    .map((term) => term.trim())
+    .filter((term) => term.length > 0);
+  if (terms.length === 0) return false;
+  return terms.some((term) => compareHaystack.includes(ignoreCase ? term.toLowerCase() : term));
 }

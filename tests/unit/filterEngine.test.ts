@@ -131,4 +131,29 @@ describe('searchMatches', () => {
   it('supports regex queries', () => {
     expect(searchMatches(entry({ message: 'code=42' }), 'code=\\d+', true, true)).toBe(true);
   });
+
+  it('plain-text mode treats "|" as OR between keywords', () => {
+    const wifiEntry = entry({ tag: 'WifiHAL', message: 'scan complete' });
+    const hdmiEntry = entry({ tag: 'HdmiControl', message: 'plugged in' });
+    const otherEntry = entry({ tag: 'Bluetooth', message: 'paired' });
+    expect(searchMatches(wifiEntry, 'WifiHAL|HDMI', false, true)).toBe(true);
+    expect(searchMatches(hdmiEntry, 'WifiHAL|HDMI', false, true)).toBe(true);
+    expect(searchMatches(otherEntry, 'WifiHAL|HDMI', false, true)).toBe(false);
+  });
+
+  it('trims whitespace around "|"-separated terms and ignores empty segments', () => {
+    expect(searchMatches(entry({ tag: 'HdmiControl' }), '  WifiHAL  |  HDMI  ', false, true)).toBe(true);
+    expect(searchMatches(entry({ tag: 'HdmiControl' }), 'WifiHAL||HDMI', false, true)).toBe(true);
+    expect(searchMatches(entry(), '   |   ', false, true)).toBe(false);
+  });
+
+  it('a query with no "|" still matches as a single plain substring, unchanged', () => {
+    expect(searchMatches(entry({ message: 'Hello World' }), 'Hello', false, true)).toBe(true);
+    expect(searchMatches(entry({ message: 'Hello World' }), 'Goodbye', false, true)).toBe(false);
+  });
+
+  it('regex mode still uses "|" as real regex alternation, not this plain-text splitting', () => {
+    expect(searchMatches(entry({ message: 'code=42' }), 'code=\\d+|status=\\d+', true, true)).toBe(true);
+    expect(searchMatches(entry({ message: 'status=200' }), 'code=\\d+|status=\\d+', true, true)).toBe(true);
+  });
 });

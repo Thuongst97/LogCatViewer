@@ -48,6 +48,7 @@ export function SearchBar() {
             if (e.key === 'Enter') submitSearch();
           }}
           placeholder="Search logs… (tag, message, pid)"
+          title="Separate keywords with | to match any of them, e.g. WifiHAL|HDMI"
         />
         {searchQuery.length > 0 && (
           <button className={styles.clearBtn} onClick={() => setSearchQuery('')} title="Clear search" aria-label="Clear search">
