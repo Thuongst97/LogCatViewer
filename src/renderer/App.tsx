@@ -16,6 +16,7 @@ import { getSystemTheme } from './lib/theme';
 import { saveLogAsFile } from './lib/saveLog';
 import { openProjectFile, saveProjectFile } from './lib/projectFile';
 import { openLogFilesWithProgress, currentFilterConfig } from './lib/openLogFiles';
+import { initVisibleEntries } from './lib/useVisibleEntries';
 import type { AppSettings, ThemePreference } from '@shared/types';
 
 export default function App() {
@@ -33,6 +34,12 @@ export default function App() {
   const toggleSearchResults = useUiStore((s) => s.toggleSearchResults);
   const sidebarVisible = useUiStore((s) => s.sidebarVisible);
   const openSettingsDialog = useUiStore((s) => s.openSettingsDialog);
+
+  // Drives the shared filtered-view computation (see useVisibleEntries.ts) —
+  // one subscription for the whole app, not one per component that reads it.
+  useEffect(() => {
+    initVisibleEntries();
+  }, []);
 
   // Initial load: settings (theme, table display prefs), device list.
   useEffect(() => {

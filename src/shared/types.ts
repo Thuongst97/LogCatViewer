@@ -47,7 +47,10 @@ export interface Filter {
   name: string;
   active: boolean;
   type: FilterType;
-  /** Required when type === 'marker'; also usable as the "swatch" shown in the sidebar for any type. */
+  /** Highlight/swatch color as a hex string, or '' for "no color" — a positive/negative
+   *  filter with no color still narrows what's visible, it just doesn't tint matching
+   *  rows (see filterEngine's rowColor). A marker with no color is a no-op, since tinting
+   *  is the only thing a marker filter does — the UI doesn't block picking it anyway. */
   color: string;
   tag: FilterFieldText;
   pid: FilterFieldNumber;

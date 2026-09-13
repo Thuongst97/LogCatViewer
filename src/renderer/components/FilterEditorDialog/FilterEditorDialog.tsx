@@ -12,18 +12,19 @@ const PRESET_COLORS = ['#f56c6c', '#f5b942', '#6fcf7d', '#3d8bef', '#a56bd6'];
 
 export function FilterEditorDialog() {
   const editingFilterId = useUiStore((s) => s.editingFilterId);
+  const newFilterPrefill = useUiStore((s) => s.newFilterPrefill);
   const closeDialog = useUiStore((s) => s.closeDialog);
   const filters = useFilterStore((s) => s.filters);
   const addFilter = useFilterStore((s) => s.addFilter);
   const updateFilter = useFilterStore((s) => s.updateFilter);
 
   const existing = editingFilterId ? filters.find((f) => f.id === editingFilterId) : null;
-  const [draft, setDraft] = useState<Filter>(existing ?? createEmptyFilter());
+  const [draft, setDraft] = useState<Filter>(existing ?? createEmptyFilter(newFilterPrefill ?? undefined));
 
   useEffect(() => {
-    setDraft(existing ?? createEmptyFilter());
+    setDraft(existing ?? createEmptyFilter(newFilterPrefill ?? undefined));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editingFilterId]);
+  }, [editingFilterId, newFilterPrefill]);
 
   function patch(p: Partial<Filter>) {
     setDraft((d) => ({ ...d, ...p }));
@@ -66,6 +67,12 @@ export function FilterEditorDialog() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <LabelXs>Highlight Color</LabelXs>
           <div className={styles.swatchRow}>
+            <button
+              className={[styles.swatch, styles.swatchNone, draft.color === '' ? styles.swatchSelected : ''].join(' ')}
+              onClick={() => patch({ color: '' })}
+              aria-label="No highlight color"
+              title="No highlight color — still filters, just doesn't tint matching rows"
+            />
             {PRESET_COLORS.map((color) => (
               <button
                 key={color}
@@ -77,7 +84,7 @@ export function FilterEditorDialog() {
             ))}
             <CustomColorSwatch
               value={draft.color}
-              isCustom={!PRESET_COLORS.includes(draft.color)}
+              isCustom={draft.color !== '' && !PRESET_COLORS.includes(draft.color)}
               onChange={(color) => patch({ color })}
             />
           </div>

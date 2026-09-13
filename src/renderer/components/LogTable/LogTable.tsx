@@ -9,7 +9,7 @@ import { useVisibleEntries } from '../../lib/useVisibleEntries';
 import { computeTableLayout } from '../../lib/tableLayout';
 import { renderLogCell } from '../../lib/renderLogCell';
 import { copyToClipboard } from '../../lib/clipboard';
-import { CopyIcon, ExpandIcon } from '../../lib/icons';
+import { CopyIcon, ExpandIcon, FilterPositiveIcon } from '../../lib/icons';
 import { COLUMN_LABELS, type ColumnKey, type LogEntry, type ResizableColumnKey } from '@shared/types';
 
 interface ContextMenuState {
@@ -34,6 +34,7 @@ export function LogTable() {
   const clearScrollRequest = useLogStore((s) => s.clearScrollRequest);
   const captureState = useDeviceStore((s) => s.captureState);
   const openLogDetailDialog = useUiStore((s) => s.openLogDetailDialog);
+  const openFilterEditor = useUiStore((s) => s.openFilterEditor);
   const { visible, compiled } = useVisibleEntries();
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
@@ -107,8 +108,21 @@ export function LogTable() {
     openLogDetailDialog();
   }
 
+  // Right-click > Add Filter — pre-fills the New Filter dialog from this line
+  // instead of a blank form. Tag comes enabled (a tag filter is the pattern
+  // every filter in typical use ends up being); Message is filled in too but
+  // left disabled, since matching the *exact* text of one specific line is
+  // rarely what you want by default — it's there to enable if you do.
+  function handleAddFilter(entry: LogEntry) {
+    openFilterEditor(null, {
+      name: entry.tag || undefined,
+      tag: { value: entry.tag, enabled: true },
+      message: { value: entry.message, enabled: false, regex: false, ignoreCase: true }
+    });
+  }
+
   const ESTIMATED_MENU_WIDTH = 200;
-  const ESTIMATED_MENU_HEIGHT = 150;
+  const ESTIMATED_MENU_HEIGHT = 190;
 
   function handleContextMenu(e: ReactMouseEvent, entry: LogEntry) {
     e.preventDefault();
@@ -215,6 +229,7 @@ export function LogTable() {
           entry={contextMenu.entry}
           onClose={() => setContextMenu(null)}
           onViewDetails={() => handleOpenDetail(contextMenu.entry)}
+          onAddFilter={() => handleAddFilter(contextMenu.entry)}
         />
       )}
     </div>
@@ -226,13 +241,15 @@ function RowContextMenu({
   y,
   entry,
   onClose,
-  onViewDetails
+  onViewDetails,
+  onAddFilter
 }: {
   x: number;
   y: number;
   entry: LogEntry;
   onClose: () => void;
   onViewDetails: () => void;
+  onAddFilter: () => void;
 }) {
   async function copy(text: string) {
     await copyToClipboard(text);
@@ -266,6 +283,17 @@ function RowContextMenu({
       >
         <ExpandIcon size={13} />
         View Full Detail&hellip;
+      </button>
+      <div className={styles.contextMenuDivider} />
+      <button
+        className={styles.contextMenuItem}
+        onClick={() => {
+          onAddFilter();
+          onClose();
+        }}
+      >
+        <FilterPositiveIcon size={13} />
+        Add Filter&hellip;
       </button>
     </div>
   );

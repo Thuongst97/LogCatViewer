@@ -210,7 +210,7 @@ function FilterRow({
       <div onClick={(e) => e.stopPropagation()}>
         <Checkbox checked={filter.active} onChange={onToggle} aria-label={`Toggle ${filter.name}`} />
       </div>
-      <span className={styles.dot} style={{ background: filter.color }} />
+      <span className={[styles.dot, filter.color ? '' : styles.dotNoColor].join(' ')} style={filter.color ? { background: filter.color } : undefined} />
       <span className={[styles.filterName, filter.active ? '' : styles.filterNameInactive].join(' ')}>{filter.name}</span>
       {selected && (
         <>

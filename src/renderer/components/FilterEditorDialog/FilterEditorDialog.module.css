@@ -51,6 +51,18 @@
   border-color: var(--accent);
   color: var(--accent-text);
 }
+/* "No color" — a positive/negative filter still narrows what's visible without
+   needing a highlight tint; the diagonal line is the standard "no fill" convention
+   (matches the swatch shape/size instead of a separate icon+button). */
+.swatchNone {
+  border: 1.5px solid var(--border-strong);
+  background:
+    linear-gradient(to top right, transparent 46%, var(--text-muted) 48%, var(--text-muted) 52%, transparent 54%),
+    var(--bg-input);
+}
+.swatchNone:hover {
+  border-color: var(--accent);
+}
 /* Positioned exactly over its visible sibling swatch button and made fully
    transparent (not display:none/visibility:hidden — those can block some
    browsers from ever opening the native picker on a programmatic .click()). */

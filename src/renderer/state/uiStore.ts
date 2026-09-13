@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ThemePreference } from '@shared/types';
+import type { Filter, ThemePreference } from '@shared/types';
 
 export type DialogKind = 'filterEditor' | 'deviceSelector' | 'settings' | 'logDetail' | null;
 export type EffectiveTheme = 'light' | 'dark';
@@ -26,6 +26,11 @@ interface UiState {
   searchResultsHeight: number;
   activeDialog: DialogKind;
   editingFilterId: string | null;
+  /** Initial field values for a brand-new filter (editingFilterId === null) —
+   *  used by "Add Filter" on a log row's right-click menu to pre-fill Tag and
+   *  Message from that line instead of opening a blank form. Ignored when
+   *  editingFilterId is set (editing an existing filter uses its own values). */
+  newFilterPrefill: Partial<Filter> | null;
   /** 0-100 while a file open is streaming in, null otherwise — read by the
    *  Toolbar to show a progress bar regardless of which UI triggered the open
    *  (toolbar button, File menu, or the Explore tab). */
@@ -40,7 +45,7 @@ interface UiState {
    *  button), as opposed to toggleSearchResults' collapse/expand chevron click. */
   expandSearchResults: () => void;
   setSearchResultsHeight: (height: number) => void;
-  openFilterEditor: (filterId: string | null) => void;
+  openFilterEditor: (filterId: string | null, prefill?: Partial<Filter>) => void;
   openDeviceSelector: () => void;
   openSettingsDialog: () => void;
   openLogDetailDialog: () => void;
@@ -59,6 +64,7 @@ export const useUiStore = create<UiState>((set) => ({
   searchResultsHeight: SEARCH_RESULTS_DEFAULT_HEIGHT,
   activeDialog: null,
   editingFilterId: null,
+  newFilterPrefill: null,
   fileOpenProgress: null,
 
   setThemePreference: (theme) => set({ themePreference: theme }),
@@ -69,11 +75,11 @@ export const useUiStore = create<UiState>((set) => ({
   expandSearchResults: () => set({ searchResultsVisible: true }),
   setSearchResultsHeight: (height) =>
     set({ searchResultsHeight: Math.min(SEARCH_RESULTS_MAX_HEIGHT, Math.max(SEARCH_RESULTS_MIN_HEIGHT, height)) }),
-  openFilterEditor: (filterId) => set({ activeDialog: 'filterEditor', editingFilterId: filterId }),
+  openFilterEditor: (filterId, prefill) => set({ activeDialog: 'filterEditor', editingFilterId: filterId, newFilterPrefill: prefill ?? null }),
   openDeviceSelector: () => set({ activeDialog: 'deviceSelector' }),
   openSettingsDialog: () => set({ activeDialog: 'settings' }),
   openLogDetailDialog: () => set({ activeDialog: 'logDetail' }),
-  closeDialog: () => set({ activeDialog: null, editingFilterId: null }),
+  closeDialog: () => set({ activeDialog: null, editingFilterId: null, newFilterPrefill: null }),
   setFileOpenProgress: (percent) => set({ fileOpenProgress: percent })
 }));
 
