@@ -32,10 +32,7 @@ button {
 }
 
 ::-webkit-scrollbar {
-  width: 14px;
-  /* Thinner than the vertical scrollbar — a full 14px felt heavy running along
-     the bottom of the log table/search results, where it's rarely more than an
-     occasional wide-message affordance rather than a constantly-used control. */
+  width: 10px;
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {

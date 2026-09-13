@@ -190,19 +190,26 @@ export function LogTable() {
 
   return (
     <div className={styles.tableArea}>
-      <div ref={headerScrollRef} className={styles.headerScroll} style={{ marginRight: scrollbarWidth }}>
-        <div
-          className={[styles.headerRow, 'mono'].join(' ')}
-          style={{ gridTemplateColumns: gridTemplate, width: '100%', minWidth: totalWidth }}
-        >
-          {visibleColumns.map((column) => (
-            <HeaderCell
-              key={column}
-              column={column}
-              width={columnWidths[column]}
-              onResize={(width) => setColumnWidth(column, width)}
-            />
-          ))}
+      {/* headerBar paints the header's background across the *whole* row, including the
+          strip marginRight carves out below (see headerScroll) — a margin is never
+          painted, so without this wrapper that strip shows the page background through
+          the gap instead of matching the header, unlike the body where a real scrollbar
+          fills the equivalent space. */}
+      <div className={styles.headerBar}>
+        <div ref={headerScrollRef} className={styles.headerScroll} style={{ marginRight: scrollbarWidth }}>
+          <div
+            className={[styles.headerRow, 'mono'].join(' ')}
+            style={{ gridTemplateColumns: gridTemplate, width: '100%', minWidth: totalWidth }}
+          >
+            {visibleColumns.map((column) => (
+              <HeaderCell
+                key={column}
+                column={column}
+                width={columnWidths[column]}
+                onResize={(width) => setColumnWidth(column, width)}
+              />
+            ))}
+          </div>
         </div>
       </div>
 

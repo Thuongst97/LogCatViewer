@@ -234,16 +234,18 @@ export function SearchResultsDock() {
 
       {dockVisible && (
         <>
-          <div ref={headerScrollRef} className={tableStyles.headerScroll} style={{ marginRight: scrollbarWidth }}>
-            <div
-              className={[tableStyles.headerRow, 'mono'].join(' ')}
-              style={{ gridTemplateColumns: gridTemplate, width: '100%', minWidth: totalWidth }}
-            >
-              {visibleColumns.map((column) => (
-                <div key={column} className={tableStyles.cell}>
-                  {COLUMN_LABELS[column].toUpperCase()}
-                </div>
-              ))}
+          <div className={tableStyles.headerBar}>
+            <div ref={headerScrollRef} className={tableStyles.headerScroll} style={{ marginRight: scrollbarWidth }}>
+              <div
+                className={[tableStyles.headerRow, 'mono'].join(' ')}
+                style={{ gridTemplateColumns: gridTemplate, width: '100%', minWidth: totalWidth }}
+              >
+                {visibleColumns.map((column) => (
+                  <div key={column} className={tableStyles.cell}>
+                    {COLUMN_LABELS[column].toUpperCase()}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 

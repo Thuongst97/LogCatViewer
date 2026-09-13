@@ -12,6 +12,14 @@
    is the one sized to the full column width, or there's nothing for it to
    scroll past — setting scrollLeft directly on an element exactly as wide as
    its own content is a no-op. */
+/* Paints the header's background across the full row width, including the strip
+   .headerScroll's marginRight carves out for scrollbar compensation — margins
+   are never painted, so without this wrapper that strip would show the page
+   background instead of the header's. */
+.headerBar {
+  background: var(--bg-panel-alt);
+  flex-shrink: 0;
+}
 .headerScroll {
   overflow-x: hidden;
   flex-shrink: 0;
