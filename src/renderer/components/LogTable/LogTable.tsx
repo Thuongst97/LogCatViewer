@@ -9,6 +9,7 @@ import { useVisibleEntries } from '../../lib/useVisibleEntries';
 import { computeTableLayout } from '../../lib/tableLayout';
 import { renderLogCell } from '../../lib/renderLogCell';
 import { measureTextWidth } from '../../lib/measureTextWidth';
+import { useScaledVirtualizerScroll } from '../../lib/scaledVirtualizerScroll';
 import { copyToClipboard } from '../../lib/clipboard';
 import { CopyIcon, ExpandIcon, FilterPositiveIcon } from '../../lib/icons';
 import { COLUMN_LABELS, type ColumnKey, type LogEntry } from '@shared/types';
@@ -61,12 +62,20 @@ export function LogTable() {
   // crossing the point where the vertical scrollbar appears/disappears, …).
   const [scrollbarWidth, setScrollbarWidth] = useState(0);
 
+  // Past ~1.4M rows the total row height exceeds what a single element can
+  // be, and without this every row beyond that point is unreachable by
+  // scrolling — see scaledVirtualizerScroll.ts. Exact no-op below that size.
+  const scaledScroll = useScaledVirtualizerScroll(visible.length * rowHeight);
+
   const virtualizer = useVirtualizer({
     count: visible.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => rowHeight,
-    overscan: 20
+    overscan: 20,
+    scrollToFn: scaledScroll.scrollToFn,
+    observeElementOffset: scaledScroll.observeElementOffset
   });
+  scaledScroll.patchMaxScrollOffset(virtualizer);
 
   const font = `${fontSize}px 'IBM Plex Mono', ui-monospace, 'Cascadia Code', Consolas, monospace`;
   const MESSAGE_CELL_PADDING = 28; // .cell's 4px+10px horizontal padding, plus a small safety margin
@@ -223,7 +232,7 @@ export function LogTable() {
               : 'No lines match the current filters.'}
           </div>
         )}
-        <div style={{ height: virtualizer.getTotalSize(), width: '100%', minWidth: totalWidth, position: 'relative' }}>
+        <div style={{ height: scaledScroll.safeTotalSize, width: '100%', minWidth: totalWidth, position: 'relative' }}>
           {virtualizer.getVirtualItems().map((virtualRow) => {
             const entry = visible[virtualRow.index];
             // Rows are deliberately flat by default — no automatic per-level tint, no
@@ -245,7 +254,7 @@ export function LogTable() {
                   left: 0,
                   width: '100%',
                   height: virtualRow.size,
-                  transform: `translateY(${virtualRow.start}px)`,
+                  transform: `translateY(${virtualRow.start - scaledScroll.rowOffsetShift}px)`,
                   gridTemplateColumns: gridTemplate,
                   background: tint,
                   outline: selected ? '1px solid var(--accent)' : undefined,

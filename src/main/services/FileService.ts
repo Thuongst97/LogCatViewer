@@ -285,7 +285,9 @@ export class FileService {
     return result.filePath;
   }
 
-  async saveLogFile(path: string, entries: LogEntry[]): Promise<void> {
-    await writeFile(path, entries.map((e) => e.raw).join('\n') + '\n', 'utf8');
+  /** Writes one chunk of a streamed save — see SaveLogPayload for why the
+   *  renderer sends text a slice at a time instead of the whole entry array. */
+  async saveLogFile(path: string, text: string, append: boolean): Promise<void> {
+    await writeFile(path, text, { encoding: 'utf8', flag: append ? 'a' : 'w' });
   }
 }

@@ -27,6 +27,36 @@ describe('LogParser', () => {
     });
   });
 
+  it('parses a year-stamped line (logcat -v year), keeping the year in date', () => {
+    // Regression: the pattern only allowed a bare "MM-DD", so a year-stamped
+    // log matched on zero lines — every line fell through to the continuation
+    // path, got dropped as pre-header noise, and the file opened empty.
+    const parser = new LogParser('emulator-5554', 1);
+    parser.feed('2026-09-14 06:58:23.331 14216 14935 D CPECallbackController: Dropping carPropertyEvent - propId: 291504647\n');
+    parser.flushAll();
+    const entries = parser.drain();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      date: '2026-09-14',
+      time: '06:58:23.331',
+      pid: 14216,
+      tid: 14935,
+      level: 'D',
+      tag: 'CPECallbackController',
+      message: 'Dropping carPropertyEvent - propId: 291504647'
+    });
+  });
+
+  it('parses year-stamped lines with CRLF endings', () => {
+    // Exported logs are frequently CRLF; the \r must not end up in the message.
+    const parser = new LogParser('emulator-5554', 1);
+    parser.feed('2026-09-14 06:58:23.331  2627  2627 D HMG-CPECallbackController: areaId 8\r\n');
+    parser.flushAll();
+    const [entry] = parser.drain();
+    expect(entry.tag).toBe('HMG-CPECallbackController');
+    expect(entry.message).toBe('areaId 8');
+  });
+
   it('assigns sequential ids across multiple lines', () => {
     const parser = new LogParser('emulator-5554', 100);
     parser.feed(

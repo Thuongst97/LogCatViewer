@@ -41,7 +41,8 @@ const api: RendererApi = {
     saveProject: (path: string, project: ProjectFile) =>
       ipcRenderer.invoke(IpcChannels.FileSaveProject, { path, project }),
     saveLogDialog: (defaultName: string) => ipcRenderer.invoke(IpcChannels.FileSaveLogDialog, defaultName),
-    saveLogFile: (path: string, entries: LogEntry[]) => ipcRenderer.invoke(IpcChannels.FileSaveLog, { path, entries })
+    saveLogFile: (path: string, text: string, append: boolean) =>
+      ipcRenderer.invoke(IpcChannels.FileSaveLog, { path, text, append })
   },
   clipboard: {
     writeText: (text: string) => ipcRenderer.invoke(IpcChannels.ClipboardWriteText, text)

@@ -31,6 +31,8 @@ export function Toolbar() {
   const openSettingsDialog = useUiStore((s) => s.openSettingsDialog);
   const fileOpenProgress = useUiStore((s) => s.fileOpenProgress);
   const opening = fileOpenProgress !== null;
+  const fileSaveProgress = useUiStore((s) => s.fileSaveProgress);
+  const saving = fileSaveProgress !== null;
 
   const isCapturing = captureState === 'capturing';
   const isPaused = captureState === 'paused';
@@ -164,9 +166,9 @@ export function Toolbar() {
         <FilterPositiveIcon size={14} />
         Open With Filter
       </Button>
-      <Button onClick={handleSaveLog} disabled={entries.length === 0} title="Save the captured log to a .log file">
+      <Button onClick={handleSaveLog} disabled={entries.length === 0 || saving} title="Save the captured log to a .log file">
         <SaveIcon size={15} />
-        Save
+        {saving ? `Saving… ${fileSaveProgress}%` : 'Save'}
       </Button>
 
       <div className={styles.spacer} />

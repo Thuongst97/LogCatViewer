@@ -61,9 +61,17 @@ export interface SaveProjectPayload {
   project: ProjectFile;
 }
 
+/** One slice of a save. The renderer joins entries into text itself and sends
+ *  it a chunk at a time rather than handing over the whole entry array:
+ *  structured-cloning millions of LogEntry objects across IPC froze the window
+ *  for seconds before a single byte was written (same cost that made the old
+ *  search worker unusable — ~2.8s per 1.75M entries). Text clones far more
+ *  cheaply, and awaiting each chunk lets the UI paint in between. */
 export interface SaveLogPayload {
   path: string;
-  entries: LogEntry[];
+  text: string;
+  /** false for the first chunk (create/truncate), true for the rest (append). */
+  append: boolean;
 }
 
 /** Passed to open a file with only lines matching the current filters kept in
@@ -126,7 +134,7 @@ export interface RendererApi {
     saveProjectDialog: (defaultName: string) => Promise<string | null>;
     saveProject: (path: string, project: ProjectFile) => Promise<void>;
     saveLogDialog: (defaultName: string) => Promise<string | null>;
-    saveLogFile: (path: string, entries: LogEntry[]) => Promise<void>;
+    saveLogFile: (path: string, text: string, append: boolean) => Promise<void>;
   };
   clipboard: {
     /** Uses Electron's native clipboard module (main process) rather than the

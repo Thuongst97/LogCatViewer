@@ -48,6 +48,9 @@ interface UiState {
    *  decides whether this load is big enough to hide the table behind a
    *  loading card (see LARGE_FILE_OPEN_BYTES). */
   fileOpenTotalBytes: number;
+  /** 0-100 while a save is streaming out, null otherwise — a multi-million
+   *  line save takes long enough that the Save button needs to say so. */
+  fileSaveProgress: number | null;
 
   setThemePreference: (theme: ThemePreference) => void;
   setEffectiveTheme: (theme: EffectiveTheme) => void;
@@ -67,6 +70,7 @@ interface UiState {
    *  main process has stat'd anything — omitting it keeps whatever size a
    *  previous progress tick already reported. */
   setFileOpenProgress: (percent: number | null, totalBytes?: number) => void;
+  setFileSaveProgress: (percent: number | null) => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -83,6 +87,7 @@ export const useUiStore = create<UiState>((set) => ({
   newFilterPrefill: null,
   fileOpenProgress: null,
   fileOpenTotalBytes: 0,
+  fileSaveProgress: null,
 
   setThemePreference: (theme) => set({ themePreference: theme }),
   setEffectiveTheme: (theme) => set({ effectiveTheme: theme }),
@@ -101,7 +106,8 @@ export const useUiStore = create<UiState>((set) => ({
     set((s) => ({
       fileOpenProgress: percent,
       fileOpenTotalBytes: percent === null ? 0 : (totalBytes ?? s.fileOpenTotalBytes)
-    }))
+    })),
+  setFileSaveProgress: (percent) => set({ fileSaveProgress: percent })
 }));
 
 /** Applies the resolved theme to <html data-theme="...">. Call whenever effectiveTheme changes. */

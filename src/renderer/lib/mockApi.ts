@@ -167,7 +167,7 @@ export const mockApi: RendererApi = {
     saveProjectDialog: async () => null,
     saveProject: async () => {},
     saveLogDialog: async () => null,
-    saveLogFile: async () => {}
+    saveLogFile: async (_path: string, _text: string, _append: boolean) => {}
   },
   clipboard: {
     // Best-effort in plain-browser preview mode — the real app routes this through

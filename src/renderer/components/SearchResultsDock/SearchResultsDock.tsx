@@ -8,6 +8,7 @@ import { useFilterStore } from '../../state/filterStore';
 import { useUiStore, SEARCH_RESULTS_HEADER_HEIGHT, LARGE_FILE_OPEN_BYTES } from '../../state/uiStore';
 import { useTableSettingsStore } from '../../state/tableSettingsStore';
 import { searchEntries } from '../../lib/searchEntries';
+import { useScaledVirtualizerScroll } from '../../lib/scaledVirtualizerScroll';
 import { useVisibleEntries } from '../../lib/useVisibleEntries';
 import { computeTableLayout } from '../../lib/tableLayout';
 import { renderLogCell } from '../../lib/renderLogCell';
@@ -84,12 +85,18 @@ export function SearchResultsDock() {
   // over a 500k-line buffer) — rendering every one as a real DOM row is what
   // made expanding this dock lag. Virtualized the same way LogTable is: only
   // the rows actually in view exist in the DOM, regardless of match count.
+  // A search over a multi-million-line buffer can return enough matches to hit
+  // the same element-height ceiling the main table does.
+  const scaledScroll = useScaledVirtualizerScroll(results.length * rowHeight);
   const virtualizer = useVirtualizer({
     count: results.length,
     getScrollElement: () => bodyRef.current,
     estimateSize: () => rowHeight,
-    overscan: 20
+    overscan: 20,
+    scrollToFn: scaledScroll.scrollToFn,
+    observeElementOffset: scaledScroll.observeElementOffset
   });
+  scaledScroll.patchMaxScrollOffset(virtualizer);
 
   // Mirrors LogTable's content-aware Message width (see its longer comment):
   // `minmax(width, 1fr)` alone never grows past the available viewport, so a
@@ -306,7 +313,7 @@ export function SearchResultsDock() {
                 {query.length === 0 ? 'No search in progress.' : searching ? 'Searching…' : 'No matches.'}
               </div>
             ) : (
-              <div style={{ height: virtualizer.getTotalSize(), width: '100%', minWidth: totalWidth, position: 'relative' }}>
+              <div style={{ height: scaledScroll.safeTotalSize, width: '100%', minWidth: totalWidth, position: 'relative' }}>
                 {virtualizer.getVirtualItems().map((virtualRow) => {
                   const entry = results[virtualRow.index];
                   return (
@@ -319,7 +326,7 @@ export function SearchResultsDock() {
                         left: 0,
                         width: '100%',
                         height: virtualRow.size,
-                        transform: `translateY(${virtualRow.start}px)`,
+                        transform: `translateY(${virtualRow.start - scaledScroll.rowOffsetShift}px)`,
                         gridTemplateColumns: gridTemplate
                       }}
                       onClick={() => select(entry.id)}

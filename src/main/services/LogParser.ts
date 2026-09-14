@@ -1,6 +1,12 @@
 // Parses `adb logcat -v threadtime` output into LogEntry records.
 //
 // threadtime format: "MM-DD HH:MM:SS.mmm  PID  TID LEVEL TAG: message"
+// `-v year` prepends a four-digit year to that date ("2026-09-14 …"), which
+// is common in saved/exported logs even when the rest of the line is
+// identical — so the year is matched optionally rather than being a second
+// pattern. Without that, a year-stamped file matched on *zero* lines and
+// opened as an empty log, since every line fell through to the
+// "unheadered continuation" path below and got dropped as pre-header noise.
 // Real devices repeat this full header on every physical line, even for a
 // multi-line stack trace (e.g. every frame of a FATAL EXCEPTION dump is its
 // own fully-headered line) — those become separate LogEntry rows, matching
@@ -16,7 +22,7 @@
 import type { LogEntry, LogLevel } from '@shared/types';
 
 const LINE_PATTERN =
-  /^(\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2}\.\d{3})\s+(\d+)\s+(\d+)\s+([VDIWEFS])\s+([^:]*?):\s?(.*)$/;
+  /^(?:(\d{4})-)?(\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2}\.\d{3})\s+(\d+)\s+(\d+)\s+([VDIWEFS])\s+([^:]*?):\s?(.*)$/;
 
 export class LogParser {
   private buffer = '';
@@ -48,10 +54,13 @@ export class LogParser {
     const match = LINE_PATTERN.exec(line);
     if (match) {
       this.finalizeCurrent();
-      const [, date, time, pidStr, tidStr, level, tagRaw, message] = match;
+      const [, year, monthDay, time, pidStr, tidStr, level, tagRaw, message] = match;
       this.current = {
         id: this.nextId++,
-        date,
+        // Keep the year when the log carries one — it's real information, it
+        // shows in the detail dialog, and it keeps a multi-file merge sorting
+        // correctly across a year boundary.
+        date: year ? `${year}-${monthDay}` : monthDay,
         time,
         pid: Number(pidStr),
         tid: Number(tidStr),

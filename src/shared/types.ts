@@ -6,7 +6,7 @@ export type LogLevel = 'V' | 'D' | 'I' | 'W' | 'E' | 'F' | 'S';
 export interface LogEntry {
   /** Monotonically increasing id assigned at capture time (not the logcat line number). */
   id: number;
-  /** "MM-DD" */
+  /** "MM-DD", or "YYYY-MM-DD" when the log carries a year (`logcat -v year`). */
   date: string;
   /** "HH:MM:SS.mmm" */
   time: string;

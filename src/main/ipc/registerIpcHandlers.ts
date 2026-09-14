@@ -106,7 +106,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, servi
   });
 
   ipcMain.handle(IpcChannels.FileSaveLog, async (_e, payload: SaveLogPayload): Promise<void> => {
-    await files.saveLogFile(payload.path, payload.entries);
+    await files.saveLogFile(payload.path, payload.text, payload.append);
   });
 
   ipcMain.handle(IpcChannels.ClipboardWriteText, async (_e, text: string): Promise<void> => {

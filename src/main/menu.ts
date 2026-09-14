@@ -48,6 +48,13 @@ export function buildApplicationMenu(getWindow: () => BrowserWindow | null): Men
         { label: 'Toggle Sidebar', click: () => withWindow(getWindow, (w) => send(w, 'view:toggle-sidebar')) },
         { label: 'Toggle Search Results', click: () => withWindow(getWindow, (w) => send(w, 'view:toggle-search-results')) },
         { type: 'separator' },
+        // Electron only binds the zoom shortcuts when these roles are present —
+        // without them Ctrl +/-/0 (and the menu items) do nothing at all, which
+        // reads as "zooming doesn't work".
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
         { role: 'reload' },
         { role: 'toggleDevTools' }
       ]
