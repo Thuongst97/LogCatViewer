@@ -55,7 +55,9 @@
   flex-grow: 1;
 }
 .body {
-  flex-grow: 1;
+  /* basis 0 for the same reason as LogTable's .scrollArea — a search over a
+     multi-million-line buffer can put a spacer that tall in here too. */
+  flex: 1 1 0;
   overflow-y: auto;
   /* A wide Message column (or a narrow window) can make the columns' combined
      width exceed the viewport — scroll to the rest instead of clipping a long

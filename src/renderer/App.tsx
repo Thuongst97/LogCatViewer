@@ -7,11 +7,12 @@ import { SearchResultsDock } from './components/SearchResultsDock/SearchResultsD
 import { FilterEditorDialog } from './components/FilterEditorDialog/FilterEditorDialog';
 import { SettingsDialog } from './components/SettingsDialog/SettingsDialog';
 import { LogDetailDialog } from './components/LogDetailDialog/LogDetailDialog';
+import { FileLoadingOverlay } from './components/FileLoadingOverlay/FileLoadingOverlay';
 import { useLogStore } from './state/logStore';
 import { useFilterStore } from './state/filterStore';
 import { useDeviceStore } from './state/deviceStore';
 import { useTableSettingsStore } from './state/tableSettingsStore';
-import { useUiStore, applyThemeToDocument, type EffectiveTheme } from './state/uiStore';
+import { useUiStore, applyThemeToDocument, LARGE_FILE_OPEN_BYTES, type EffectiveTheme } from './state/uiStore';
 import { getSystemTheme } from './lib/theme';
 import { saveLogAsFile } from './lib/saveLog';
 import { openProjectFile, saveProjectFile } from './lib/projectFile';
@@ -34,6 +35,8 @@ export default function App() {
   const toggleSearchResults = useUiStore((s) => s.toggleSearchResults);
   const sidebarVisible = useUiStore((s) => s.sidebarVisible);
   const openSettingsDialog = useUiStore((s) => s.openSettingsDialog);
+  const fileOpenProgress = useUiStore((s) => s.fileOpenProgress);
+  const fileOpenTotalBytes = useUiStore((s) => s.fileOpenTotalBytes);
 
   // Drives the shared filtered-view computation (see useVisibleEntries.ts) —
   // one subscription for the whole app, not one per component that reads it.
@@ -148,14 +151,28 @@ export default function App() {
     return off;
   }, [clearLog, toggleSidebar, toggleSearchResults, openSettingsDialog, effectiveTheme, setThemePreference, setEffectiveTheme]);
 
+  // A big file load replaces the table with a loading card rather than
+  // rendering rows that are being appended to ~25 times a second — see
+  // FileLoadingOverlay for why that churn is what made the window stutter
+  // partway through a large load.
+  const loadingLargeFile = fileOpenProgress !== null && fileOpenTotalBytes >= LARGE_FILE_OPEN_BYTES;
+
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <Toolbar />
-      <div style={{ flexGrow: 1, display: 'flex', minHeight: 0 }}>
+      {/* flexBasis 0 throughout this column, not the default `auto` — see
+          LogTable.module.css's .tableArea for why an `auto` basis here made
+          the Search Results dock get squeezed off the bottom of the window
+          once a file grew into the millions of rows. */}
+      <div style={{ flexGrow: 1, flexBasis: 0, display: 'flex', minHeight: 0 }}>
         {sidebarVisible && <FilterSidebar />}
-        <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <div style={{ flexGrow: 1, flexBasis: 0, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
           <SearchBar />
-          <LogTable />
+          {loadingLargeFile ? (
+            <FileLoadingOverlay percent={fileOpenProgress} totalBytes={fileOpenTotalBytes} />
+          ) : (
+            <LogTable />
+          )}
         </div>
       </div>
       <SearchResultsDock />

@@ -3,6 +3,18 @@
 // steady-state capture at capacity doesn't pay an O(n) slice on every tick),
 // and an id->entry Map so selecting a row for the LogDetailDialog is O(1)
 // instead of scanning the whole buffer.
+//
+// `entries` is mutated in place (push/splice) instead of rebuilt via
+// concat/slice on every batch. At capacity (up to ~1.1M entries with the
+// trim margin below), `entries.concat(batch)` copies the *entire* buffer on
+// every single ~40ms tick — that's the dominant cost that made capture lag
+// badly past ~1M lines, dwarfing everything else in the render pipeline.
+// Mutating in place makes a batch O(batch.length) instead of O(buffer
+// length). The trade-off: consumers can no longer tell "did the data change"
+// by comparing `entries` to its previous reference (it's the same array
+// object across most ticks now) — `version` is the explicit signal for that;
+// see useVisibleEntries.ts, which is the one place that used to rely on the
+// old reference-equality check.
 import { create } from 'zustand';
 import type { LogEntry } from '@shared/types';
 
@@ -29,6 +41,11 @@ export interface ScrollRequest {
 
 interface LogState {
   entries: LogEntry[];
+  /** Bumped on every mutation to `entries` (append, trim, clear) — the signal
+   *  consumers must use to detect a change, since `entries` itself keeps the
+   *  same array reference across most ticks now (see the file-level comment
+   *  above). */
+  version: number;
   entriesById: Map<number, LogEntry>;
   capacity: number;
   selectedEntryId: number | null;
@@ -53,6 +70,7 @@ interface LogState {
 
 export const useLogStore = create<LogState>((set) => ({
   entries: [],
+  version: 0,
   entriesById: new Map(),
   capacity: DEFAULT_LOG_CAPACITY,
   selectedEntryId: null,
@@ -62,30 +80,34 @@ export const useLogStore = create<LogState>((set) => ({
   appendBatch: (batch) => {
     if (batch.length === 0) return;
     set((state) => {
-      let next = state.entries.length === 0 ? batch.slice() : state.entries.concat(batch);
-      let dropped: LogEntry[] = [];
-      if (next.length > state.capacity * TRIM_MARGIN) {
-        dropped = next.slice(0, next.length - state.capacity);
-        next = next.slice(next.length - state.capacity);
-      }
+      // Mutate in place — see the file-level comment for why this can't be a
+      // fresh array via concat/slice at this scale.
+      const entries = state.entries;
+      for (const e of batch) entries.push(e);
       const nextById = state.entriesById;
-      for (const e of dropped) nextById.delete(e.id);
       for (const e of batch) nextById.set(e.id, e);
-      return { entries: next, entriesById: nextById };
+      if (entries.length > state.capacity * TRIM_MARGIN) {
+        const dropCount = entries.length - state.capacity;
+        const dropped = entries.splice(0, dropCount);
+        for (const e of dropped) nextById.delete(e.id);
+      }
+      return { entries, entriesById: nextById, version: state.version + 1 };
     });
   },
 
   appendUnboundedBatch: (batch) => {
     if (batch.length === 0) return;
     set((state) => {
-      const next = state.entries.length === 0 ? batch.slice() : state.entries.concat(batch);
+      const entries = state.entries;
+      for (const e of batch) entries.push(e);
       const nextById = state.entriesById;
       for (const e of batch) nextById.set(e.id, e);
-      return { entries: next, entriesById: nextById };
+      return { entries, entriesById: nextById, version: state.version + 1 };
     });
   },
 
-  clear: () => set({ entries: [], entriesById: new Map(), selectedEntryId: null, scrollRequest: null }),
+  clear: () =>
+    set((state) => ({ entries: [], entriesById: new Map(), selectedEntryId: null, scrollRequest: null, version: state.version + 1 })),
   select: (id) => set({ selectedEntryId: id }),
   goToEntry: (id) =>
     set((state) => ({

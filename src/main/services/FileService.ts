@@ -15,13 +15,15 @@ const STREAM_CHUNK_BYTES = 1 << 20;
 
 // Even with chunked, non-blocking parsing, every parsed line still ends up as a
 // live LogEntry object in the renderer's buffer (see openLogFiles.ts lifting
-// logStore's capacity for a file load) — millions of them starts costing real
-// time on every subsequent append (the whole growing array gets copied) and
-// every filter re-scan, which is what made a 1GB/8M-line file grow laggier and
-// laggier as more of it loaded. Past this size, "Open" refuses and points at
-// "Open with Filter" instead, which discards non-matching lines as it streams
-// so the in-memory result stays bounded by match count, not file size.
-const MAX_UNFILTERED_OPEN_BYTES = 150 * 1024 * 1024;
+// logStore's capacity for a file load) — millions of them means real memory
+// and a real per-filter-toggle rescan cost, though logStore's appends
+// themselves are now O(batch) rather than O(buffer length) (see logStore.ts),
+// which is what makes raising this cap to 500MB reasonable rather than just
+// moving where the same slowdown used to kick in. Past this size, "Open"
+// refuses and points at "Open with Filter" instead, which discards
+// non-matching lines as it streams so the in-memory result stays bounded by
+// match count, not file size.
+const MAX_UNFILTERED_OPEN_BYTES = 500 * 1024 * 1024;
 
 // "Open with Filter" filters lines before they reach the frontend, so file
 // size alone doesn't predict frontend load the way it does for plain Open —

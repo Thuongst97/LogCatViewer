@@ -60,13 +60,19 @@ export function compileFilters(filters: Filter[], enabled = true): CompiledFilte
   if (active.length === 0) return PASSTHROUGH_FILTERS;
   const positives = active.filter((f) => f.filter.type === 'positive');
   const negatives = active.filter((f) => f.filter.type === 'negative');
+  const markers = active.filter((f) => f.filter.type === 'marker');
   const colorable = active.filter((f) => f.filter.type !== 'negative');
 
   return {
     isVisible(entry: LogEntry): boolean {
       if (negatives.some((f) => matchesCompiledFilter(f, entry))) return false;
       if (positives.length === 0) return true;
-      return positives.some((f) => matchesCompiledFilter(f, entry));
+      // A marker match must stay visible even when it doesn't also satisfy
+      // any active *positive* filter — otherwise adding an unrelated
+      // positive filter (e.g. a level floor) silently hides the very lines a
+      // marker was set up to highlight, which is indistinguishable from the
+      // marker's color just not applying.
+      return positives.some((f) => matchesCompiledFilter(f, entry)) || markers.some((f) => matchesCompiledFilter(f, entry));
     },
     rowColor(entry: LogEntry): string | null {
       const hit = colorable.find((f) => matchesCompiledFilter(f, entry));

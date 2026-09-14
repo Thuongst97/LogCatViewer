@@ -7,6 +7,12 @@ import type { LogEntry, LogLevel } from '@shared/types';
 interface VisibleEntriesState {
   visible: LogEntry[];
   compiled: CompiledFilters;
+  /** Bumped on every recompute, whether or not `visible` ends up being a new
+   *  array reference — see the note on logStore's `version` for why: in the
+   *  common "Filters Disabled" case `visible` directly aliases logStore's own
+   *  `entries` (no copy — see below), which is now mutated in place rather
+   *  than replaced, so reference equality can no longer signal a change. */
+  version: number;
 }
 
 /** Single shared result, computed once and read by both LogTable and
@@ -14,7 +20,8 @@ interface VisibleEntriesState {
  *  hook (a plain hook would redo the same expensive pass once per consumer). */
 const useVisibleEntriesStore = create<VisibleEntriesState>(() => ({
   visible: [],
-  compiled: PASSTHROUGH_FILTERS
+  compiled: PASSTHROUGH_FILTERS,
+  version: 0
 }));
 
 // A full re-filter over a 1M-entry buffer with several active filters
@@ -47,10 +54,14 @@ async function recompute(): Promise<void> {
   const compiled = compileFilters(filters, filtersEnabled);
 
   // Nothing to filter at all — the common default state (Filters Disabled,
-  // no Levels excluded) — skip scanning the buffer entirely.
+  // no Levels excluded) — skip scanning the buffer entirely. `visible`
+  // directly aliases `entries` here (no copy) — entries is mutated in place
+  // by logStore, so this stays cheap even as the buffer grows past a
+  // million lines; `version` (not `visible`'s reference) is what tells
+  // consumers a new batch landed.
   if (compiled === PASSTHROUGH_FILTERS && quickLevelExclusions.size === 0) {
     cache = null;
-    useVisibleEntriesStore.setState({ visible: entries, compiled });
+    useVisibleEntriesStore.setState((s) => ({ visible: entries, compiled, version: s.version + 1 }));
     return;
   }
 
@@ -64,14 +75,18 @@ async function recompute(): Promise<void> {
 
   if (canAppend) {
     // Only new entries since last time (no trim/clear, same filter criteria)
-    // — bounded by batch size, not buffer size, so no need to chunk this path.
-    const added: LogEntry[] = [];
+    // — bounded by batch size, not buffer size, so no need to chunk this
+    // path. Mutates `cache.visible` in place (push, not concat) for the same
+    // reason logStore mutates `entries` in place: a filtered view over a
+    // near-capacity buffer can itself be hundreds of thousands of entries
+    // long, and concat-ing onto it every tick would reintroduce the exact
+    // per-tick O(buffer length) cost this whole change is meant to remove.
+    const visible = cache!.visible;
     for (let i = cache!.sourceLength; i < entries.length; i++) {
-      if (isVisible(entries[i])) added.push(entries[i]);
+      if (isVisible(entries[i])) visible.push(entries[i]);
     }
-    const visible = added.length > 0 ? cache!.visible.concat(added) : cache!.visible;
     cache = { sourceLength: entries.length, firstEntry: entries[0], compiled, quickLevelExclusions, visible };
-    useVisibleEntriesStore.setState({ visible, compiled });
+    useVisibleEntriesStore.setState((s) => ({ visible, compiled, version: s.version + 1 }));
     return;
   }
 
@@ -89,7 +104,7 @@ async function recompute(): Promise<void> {
   }
   if (myGeneration !== generation) return;
   cache = { sourceLength: entries.length, firstEntry: entries[0], compiled, quickLevelExclusions, visible: result };
-  useVisibleEntriesStore.setState({ visible: result, compiled });
+  useVisibleEntriesStore.setState((s) => ({ visible: result, compiled, version: s.version + 1 }));
 }
 
 let initialized = false;
@@ -103,7 +118,9 @@ export function initVisibleEntries(): void {
   initialized = true;
   recompute();
   useLogStore.subscribe((state, prev) => {
-    if (state.entries !== prev.entries) recompute();
+    // `entries` is mutated in place now (see logStore.ts), so its reference
+    // no longer changes on a normal append — `version` is the real signal.
+    if (state.version !== prev.version) recompute();
   });
   useFilterStore.subscribe((state, prev) => {
     if (
@@ -122,7 +139,13 @@ export function initVisibleEntries(): void {
  *  per relevant change and shared via `useVisibleEntriesStore`, not redone per
  *  call site. */
 export function useVisibleEntries(): { visible: LogEntry[]; compiled: CompiledFilters } {
-  const visible = useVisibleEntriesStore((s) => s.visible);
-  const compiled = useVisibleEntriesStore((s) => s.compiled);
+  // Subscribes to `version` purely to know *when* to re-render — `visible`
+  // itself often keeps the same array reference across ticks (see above), so
+  // selecting it directly wouldn't reliably trigger a re-render on its own.
+  // Reading `visible`/`compiled` via getState() right after gets this
+  // render's freshest values, since the store is already updated by the time
+  // the version bump has notified this subscription.
+  useVisibleEntriesStore((s) => s.version);
+  const { visible, compiled } = useVisibleEntriesStore.getState();
   return { visible, compiled };
 }

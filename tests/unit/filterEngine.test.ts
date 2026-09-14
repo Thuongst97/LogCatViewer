@@ -51,6 +51,21 @@ describe('compileFilters', () => {
     expect(compiled.rowColor(infoEntry)).toBeNull();
   });
 
+  it('a marker match stays visible even alongside an unrelated active positive filter', () => {
+    // Regression: a marker used to only escape the *narrowing* effect of positive
+    // filters, but wasn't itself counted as a reason to stay visible — so adding
+    // an unrelated positive filter (e.g. a level floor) silently hid the very
+    // lines the marker was set up to highlight, which looked indistinguishable
+    // from "the marker's color isn't applying".
+    const positive = createEmptyFilter({ type: 'positive', minLevel: { value: 'W', enabled: true } });
+    const marker = createEmptyFilter({ type: 'marker', color: '#a56bd6', tag: { value: 'OkHttp', enabled: true } });
+    const compiled = compileFilters([positive, marker]);
+    const markerOnlyMatch = entry({ level: 'D', tag: 'OkHttp' });
+    expect(compiled.isVisible(markerOnlyMatch)).toBe(true);
+    expect(compiled.rowColor(markerOnlyMatch)).toBe('#a56bd6');
+    expect(compiled.isVisible(entry({ level: 'D', tag: 'Other' }))).toBe(false);
+  });
+
   it('a matching positive filter also lends its configured color to the row', () => {
     const positive = createEmptyFilter({ type: 'positive', color: '#3d8bef', tag: { value: 'MyApp', enabled: true } });
     const compiled = compileFilters([positive]);

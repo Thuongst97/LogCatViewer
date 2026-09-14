@@ -22,7 +22,10 @@ export async function openLogFilesWithProgress(paths: string[], filterConfig?: O
   const { setFileOpenProgress } = useUiStore.getState();
   setFileOpenProgress(0);
   const off = window.api.files.onOpenProgress(({ processedBytes, totalBytes }) => {
-    setFileOpenProgress(totalBytes > 0 ? Math.min(100, Math.round((processedBytes / totalBytes) * 100)) : null);
+    setFileOpenProgress(
+      totalBytes > 0 ? Math.min(100, Math.round((processedBytes / totalBytes) * 100)) : null,
+      totalBytes
+    );
   });
   try {
     await window.api.files.openLogPaths(paths, filterConfig);

@@ -5,9 +5,9 @@ import tableStyles from '../LogTable/LogTable.module.css';
 import { ChevronDownIcon, ChevronUpIcon, SearchIcon } from '../../lib/icons';
 import { useLogStore } from '../../state/logStore';
 import { useFilterStore } from '../../state/filterStore';
-import { useUiStore, SEARCH_RESULTS_HEADER_HEIGHT } from '../../state/uiStore';
+import { useUiStore, SEARCH_RESULTS_HEADER_HEIGHT, LARGE_FILE_OPEN_BYTES } from '../../state/uiStore';
 import { useTableSettingsStore } from '../../state/tableSettingsStore';
-import { useSearchWorker } from '../../lib/useSearchWorker';
+import { searchEntries } from '../../lib/searchEntries';
 import { useVisibleEntries } from '../../lib/useVisibleEntries';
 import { computeTableLayout } from '../../lib/tableLayout';
 import { renderLogCell } from '../../lib/renderLogCell';
@@ -23,15 +23,18 @@ const DEBOUNCE_MS = 150;
 /**
  * Search results scoped to whatever's currently filtered into view — same set
  * of lines the main table shows (saved Filters + quick Level toggles), mirrors
- * DLT Viewer's persistent bottom search panel otherwise. Runs in a Web Worker
- * so a large regex scan never blocks the table (plan §8.6 / §10). When no
- * filters/levels are narrowing anything, this is the same as searching the
- * whole buffer — searching a smaller, already-filtered set when they are is
- * both the more expected result (a hidden line isn't a "match" you can act on)
- * and faster, since there's less to clone across to the worker and scan.
- * Triggered only by an explicit submit, not by typing — posting a
- * million-entry buffer to the worker on every keystroke is what made typing
- * feel laggy on a large log.
+ * DLT Viewer's persistent bottom search panel otherwise. Chunked and yielded
+ * (see searchEntries.ts) so a large scan never blocks the table — a plain Web
+ * Worker was tried first, but its postMessage clone of the whole buffer
+ * turned out to cost far more than the scan itself at real scale (~2.8s to
+ * hand off 1.75M entries versus ~100ms to actually search them), which is
+ * what made search look hung on a large log. When no filters/levels are
+ * narrowing anything, this is the same as searching the whole buffer —
+ * searching a smaller, already-filtered set when they are is both the more
+ * expected result (a hidden line isn't a "match" you can act on) and faster,
+ * since there's less to scan. Triggered only by an explicit submit, not by
+ * typing — re-searching a million-entry buffer on every keystroke is what
+ * made typing feel laggy on a large log.
  */
 export function SearchResultsDock() {
   const dockVisible = useUiStore((s) => s.searchResultsVisible);
@@ -47,11 +50,11 @@ export function SearchResultsDock() {
   const query = useFilterStore((s) => s.submittedSearchQuery);
   const regex = useFilterStore((s) => s.searchRegex);
   const caseSensitive = useFilterStore((s) => s.searchCaseSensitive);
-  const { search } = useSearchWorker();
+  const loadingLargeFile = useUiStore((s) => s.fileOpenProgress !== null && s.fileOpenTotalBytes >= LARGE_FILE_OPEN_BYTES);
   const [results, setResults] = useState<LogEntry[]>([]);
-  // A submitted search over a huge buffer (cloning it across to the worker,
-  // then scanning it) can take a perceptible moment — shown so a submit
-  // doesn't look like it did nothing until the results suddenly appear.
+  // A submitted search over a huge buffer can take a perceptible moment even
+  // chunked — shown so a submit doesn't look like it did nothing until the
+  // results suddenly appear.
   const [searching, setSearching] = useState(false);
   const [dragging, setDragging] = useState(false);
   const columns = useTableSettingsStore((s) => s.columns);
@@ -147,31 +150,78 @@ export function SearchResultsDock() {
   // active, which isn't the stale-results problem this is fixing.
   const searchKeyRef = useRef<string>('');
 
+  // A pending debounced run reads through this ref instead of closing over
+  // whatever `visibleEntries` was current when it got scheduled — see below
+  // for why the run itself is never rescheduled once queued.
+  const latestRef = useRef({ visibleEntries, query, regex, caseSensitive });
+  latestRef.current = { visibleEntries, query, regex, caseSensitive };
+  const pendingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
-    const searchKey = `${query} ${String(regex)} ${String(caseSensitive)}`;
+    // An in-flight large file load appends to the buffer ~25 times a second,
+    // and each of those would otherwise queue another full re-scan of a set
+    // that's still growing — throwing away the previous scan's work every
+    // time, for results nobody can act on until the load settles anyway. The
+    // load finishing flips this back and re-runs the search once, against
+    // the final buffer.
+    if (loadingLargeFile) return;
+
+    const searchKey = `${query} ${String(regex)} ${String(caseSensitive)}`;
     const isNewSearch = searchKey !== searchKeyRef.current;
     searchKeyRef.current = searchKey;
 
     if (query.length === 0) {
+      if (pendingTimeoutRef.current) {
+        clearTimeout(pendingTimeoutRef.current);
+        pendingTimeoutRef.current = null;
+      }
       setResults([]);
       setSearching(false);
       return;
     }
-    let cancelled = false;
-    if (isNewSearch) setResults([]); // drop the previous query's matches right away, don't leave them showing
-    setSearching(true);
-    const handle = setTimeout(async () => {
-      const matches = await search(visibleEntries, query, regex, caseSensitive);
-      if (cancelled) return; // a newer search superseded this one
+
+    // A background refresh (live capture still streaming, a filter/level
+    // toggle) while a run is already queued — let that queued run fire on
+    // schedule instead of pushing its deadline out again. Live capture can
+    // post a new batch every ~40ms, well under DEBOUNCE_MS; resetting the
+    // timer on every single one — as a plain "clear + reschedule" debounce
+    // does — means it would never survive long enough to actually fire,
+    // leaving `searching` stuck true and the dock reading "Searching…"
+    // indefinitely for as long as logs keep streaming in. Not rescheduling
+    // costs nothing: the queued run reads `latestRef` at fire time, so it
+    // always searches the freshest buffer regardless of when it was queued.
+    if (!isNewSearch && pendingTimeoutRef.current) return;
+
+    if (isNewSearch) {
+      if (pendingTimeoutRef.current) clearTimeout(pendingTimeoutRef.current);
+      setResults([]); // drop the previous query's matches right away, don't leave them showing
+      setSearching(true);
+    }
+    // A background refresh doesn't touch `searching` at all — it's already
+    // false from the initial search having resolved. Under continuous live
+    // streaming this effect can re-run every ~40ms; flipping `searching` true
+    // on each one (as before) meant the label spent nearly all its time
+    // reading "Searching…" again immediately after every quiet re-scan
+    // resolved, which looked just as stuck as the original bug even once the
+    // underlying search itself was completing fine.
+    pendingTimeoutRef.current = setTimeout(async () => {
+      pendingTimeoutRef.current = null;
+      const current = latestRef.current;
+      const matches = await searchEntries(current.visibleEntries, current.query, current.regex, current.caseSensitive);
       setResults(matches);
       setSearching(false);
     }, DEBOUNCE_MS);
-    return () => {
-      cancelled = true;
-      clearTimeout(handle);
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleEntries, query, regex, caseSensitive]);
+  }, [visibleEntries, query, regex, caseSensitive, loadingLargeFile]);
+
+  // Only cleaned up on unmount — a queued run deliberately outlives any single
+  // render's effect cleanup (see above), so it can't be cancelled the usual
+  // per-render way without reintroducing the never-fires bug.
+  useEffect(() => {
+    return () => {
+      if (pendingTimeoutRef.current) clearTimeout(pendingTimeoutRef.current);
+    };
+  }, []);
 
   const dragStart = useRef<{ startY: number; startHeight: number } | null>(null);
 

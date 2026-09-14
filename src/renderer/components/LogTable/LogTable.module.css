@@ -1,5 +1,16 @@
 .tableArea {
-  flex-grow: 1;
+  /* basis 0, not the default `auto`: with `auto` this box's flex base size is
+     its own content height, and its content is .scrollArea's virtualizer
+     spacer — which at a few million rows is tens of millions of pixels tall
+     (Chromium clamps it at 33,554,428). Flexbox then has to resolve a free
+     space of roughly minus-33-million against a viewport of a few hundred
+     pixels, and how that shrinkage lands varies with window size, display
+     scaling and Chromium build. That's what let the Search Results dock and
+     the horizontal scrollbar get squeezed off the bottom of the window on a
+     large file. A zero basis takes the content height out of the sizing
+     equation entirely: these boxes just split the space that's actually
+     there. */
+  flex: 1 1 0;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -40,7 +51,9 @@
   border-bottom-color: var(--border-strong);
 }
 .scrollArea {
-  flex-grow: 1;
+  /* basis 0 — see .tableArea above; this is the box whose content is the
+     tens-of-millions-of-pixels-tall spacer, so it matters most here. */
+  flex: 1 1 0;
   overflow-y: auto;
   /* A wide Message column (or a narrow window) can make the columns' combined
      width exceed the viewport — scroll to the rest instead of clipping a long
